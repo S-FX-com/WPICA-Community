@@ -10,7 +10,7 @@
     var TextControl      = components.TextControl;
     var ToggleControl    = components.ToggleControl;
 
-    blocks.registerBlockType( 'blt-community/address-lookup', {
+    blocks.registerBlockType( 'srfm/cmm-address-lookup', {
 
         edit: function ( props ) {
             var attrs  = props.attributes;
