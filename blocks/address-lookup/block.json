@@ -1,0 +1,32 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "blt-community/address-lookup",
+    "version": "1.1.0",
+    "title": "CMM Address Lookup",
+    "category": "common",
+    "icon": "admin-home",
+    "description": "Predictive address search field. Shows only inactive or expired homes from the Blt Community membership list.",
+    "keywords": [ "address", "community", "membership", "lookup", "typeahead", "cmm", "blt" ],
+    "textdomain": "cmm",
+    "editorScript": "file:./index.js",
+    "editorStyle":  "file:./editor.css",
+    "attributes": {
+        "label": {
+            "type": "string",
+            "default": "Your Property Address"
+        },
+        "placeholder": {
+            "type": "string",
+            "default": "Start typing your address…"
+        },
+        "required": {
+            "type": "boolean",
+            "default": true
+        }
+    },
+    "supports": {
+        "html":     false,
+        "multiple": false
+    }
+}
