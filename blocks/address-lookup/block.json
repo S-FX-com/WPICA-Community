@@ -4,7 +4,7 @@
     "name": "blt-community/address-lookup",
     "version": "1.1.0",
     "title": "CMM Address Lookup",
-    "category": "common",
+    "category": "sureforms",
     "icon": "admin-home",
     "description": "Predictive address search field. Shows only inactive or expired homes from the Blt Community membership list.",
     "keywords": [ "address", "community", "membership", "lookup", "typeahead", "cmm", "blt" ],
@@ -27,6 +27,7 @@
     },
     "supports": {
         "html":     false,
-        "multiple": false
+        "multiple": false,
+        "reusable": false
     }
 }
