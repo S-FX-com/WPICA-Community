@@ -207,6 +207,15 @@ Returns up to 10 matching homes with `inactive` or `expired` status.
 </div>
 ```
 
+### CMM Address Lookup Block (recommended)
+
+Instead of pasting raw HTML, search for **"CMM Address Lookup"** in the SureForms block inserter. The block:
+
+- Renders the full typeahead field with live REST-powered address search
+- Automatically enqueues the JavaScript and CSS
+- Is configurable from the sidebar (Label, Placeholder, Required toggle)
+- Is server-side rendered, so it always reflects the current plugin state
+
 **Standard SureForms fields to add below it:**
 - First Name (required)
 - Last Name (required)
