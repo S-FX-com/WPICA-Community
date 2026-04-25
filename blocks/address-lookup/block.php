@@ -23,7 +23,7 @@ class Block extends Base {
      * @param array $attributes Block attributes from the editor.
      * @return string           HTML output.
      */
-    public function render( array $attributes ): string {
+    public function render( $attributes ) {
         wp_enqueue_script(
             'cmm-address-typeahead',
             CMM_URL . 'assets/js/cmm-address-typeahead.js',
