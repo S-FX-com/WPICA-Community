@@ -181,9 +181,10 @@ class CMM_Webhooks {
         }
 
         $current_status = get_field( 'membership_status', $home_id );
-        if ( $current_status !== 'approved_pending_payment' ) {
+        // approved_pending_payment = new-member flow; inactive/expired = dues renewal
+        if ( ! in_array( $current_status, [ 'approved_pending_payment', 'inactive', 'expired' ], true ) ) {
             return new WP_REST_Response( [
-                'error' => "Home is not awaiting payment (status: {$current_status})",
+                'error' => "Home is not eligible for payment (status: {$current_status})",
             ], 409 );
         }
 

@@ -15,9 +15,10 @@ class CMM_Applications {
         add_action( 'rest_api_init', [ __CLASS__, 'register_endpoints' ] );
         add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_typeahead' ] );
 
-        add_action( 'admin_post_cmm_approve_application', [ __CLASS__, 'approve' ] );
-        add_action( 'admin_post_cmm_reject_application',  [ __CLASS__, 'reject' ] );
+        add_action( 'admin_post_cmm_approve_application',  [ __CLASS__, 'approve' ] );
+        add_action( 'admin_post_cmm_reject_application',   [ __CLASS__, 'reject' ] );
         add_action( 'admin_post_cmm_resend_payment_email', [ __CLASS__, 'resend_payment_email' ] );
+        add_action( 'admin_post_cmm_reset_home',           [ __CLASS__, 'reset_home' ] );
     }
 
     // -------------------------------------------------------------------------
@@ -47,12 +48,15 @@ class CMM_Applications {
             <div class="notice notice-warning inline"><p>Application rejected. Decline email sent.</p></div>
             <?php elseif ( $action_done === 'resent' ): ?>
             <div class="notice notice-info inline"><p>Payment email resent.</p></div>
+            <?php elseif ( $action_done === 'reset' ): ?>
+            <div class="notice notice-warning inline"><p>Home reset to inactive.</p></div>
             <?php endif; ?>
 
             <?php
-            self::render_section( 'Pending Applications', 'pending_review', true );
+            self::render_section( 'Pending Applications',        'pending_review',           true  );
             self::render_section( 'Approved — Awaiting Payment', 'approved_pending_payment', false );
-            self::render_section( 'Rejected', 'rejected', false );
+            self::render_section( 'Rejected',                    'rejected',                 false );
+            self::render_section( 'Active Members',              'active',                   false );
             ?>
         </div>
         <?php
@@ -116,6 +120,7 @@ class CMM_Applications {
                                    style="width:180px;">
                             <button type="submit" class="button button-small">Reject</button>
                         </form>
+                        &nbsp;
                     <?php elseif ( $status === 'approved_pending_payment' ): ?>
                         <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
                             <?php wp_nonce_field( 'cmm_resend_' . $home->ID ); ?>
@@ -123,9 +128,16 @@ class CMM_Applications {
                             <input type="hidden" name="home_id" value="<?php echo absint( $home->ID ); ?>">
                             <button type="submit" class="button button-small">Resend Payment Email</button>
                         </form>
+                        &nbsp;
                     <?php else: ?>
-                        —
                     <?php endif; ?>
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;"
+                          onsubmit="return confirm('Reset this home to inactive? This clears all membership and payment data.')">
+                        <?php wp_nonce_field( 'cmm_reset_' . $home->ID ); ?>
+                        <input type="hidden" name="action"  value="cmm_reset_home">
+                        <input type="hidden" name="home_id" value="<?php echo absint( $home->ID ); ?>">
+                        <button type="submit" class="button button-small" style="color:#b32d2e;">Reset</button>
+                    </form>
                 </td>
             </tr>
             <?php endforeach; ?>
@@ -190,6 +202,37 @@ class CMM_Applications {
         }
 
         wp_redirect( admin_url( 'admin.php?page=cmm-applications&cmm_action=resent' ) );
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // Reset home to inactive (clears membership and payment data)
+    // -------------------------------------------------------------------------
+
+    public static function reset_home() {
+        $home_id = (int) ( $_POST['home_id'] ?? 0 );
+        check_admin_referer( 'cmm_reset_' . $home_id );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+
+        $linked = get_field( 'linked_users', $home_id ) ?: [];
+        foreach ( $linked as $entry ) {
+            $uid  = is_object( $entry ) ? $entry->ID : (int) $entry;
+            $user = get_userdata( $uid );
+            if ( $user ) {
+                $user->remove_role( 'pending_applicant' );
+                $user->remove_role( 'home_admin' );
+                delete_user_meta( $uid, 'cmm_home_id' );
+                delete_user_meta( $uid, 'cmm_address_code' );
+            }
+        }
+
+        update_field( 'membership_status', 'inactive', $home_id );
+        update_field( 'primary_contact',   '',         $home_id );
+        update_field( 'linked_users',      [],         $home_id );
+        update_field( 'dues_amount_paid',  '',         $home_id );
+        update_field( 'dues_paid_date',    '',         $home_id );
+
+        wp_redirect( admin_url( 'admin.php?page=cmm-applications&cmm_action=reset' ) );
         exit;
     }
 
