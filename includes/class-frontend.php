@@ -148,6 +148,7 @@ class CMM_Frontend {
 
         $user = new WP_User( $user_id );
         $user->add_role( 'home_member' );
+        CMM_Roles::set_home_meta( $user_id, $home_id, (string) get_field( 'address_code', $home_id ) );
 
         delete_transient( 'cmm_invite_' . $token );
 
@@ -183,6 +184,7 @@ class CMM_Frontend {
         $user = new WP_User( $target_uid );
         $user->remove_role( 'home_member' );
         $user->remove_role( 'home_admin' );
+        CMM_Roles::clear_home_meta( $target_uid );
 
         wp_send_json_success( 'User removed.' );
     }
@@ -192,15 +194,9 @@ class CMM_Frontend {
     // -------------------------------------------------------------------------
 
     public static function get_home_for_user( int $user_id ): ?WP_Post {
-        $homes = get_posts( [
-            'post_type'      => 'cmm_home',
-            'posts_per_page' => 1,
-            'meta_query'     => [ [
-                'key'     => 'linked_users',
-                'value'   => '"' . $user_id . '"',
-                'compare' => 'LIKE',
-            ] ],
-        ] );
-        return $homes[0] ?? null;
+        $home_id = (int) get_user_meta( $user_id, 'cmm_home_id', true );
+        if ( ! $home_id ) return null;
+        $home = get_post( $home_id );
+        return ( $home && $home->post_type === 'cmm_home' ) ? $home : null;
     }
 }

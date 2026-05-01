@@ -112,11 +112,12 @@ class CMM_Webhooks {
         $user_id = $user->ID;
 
         // Link user to home and open the application.
-        update_field( 'primary_contact',   $user_id,          $home_id );
-        update_field( 'linked_users',      [ $user_id ],      $home_id );
-        update_field( 'membership_status', 'pending_review',  $home_id );
+        update_field( 'primary_contact',   $user_id,         $home_id );
+        update_field( 'linked_users',      [ $user_id ],     $home_id );
+        update_field( 'membership_status', 'pending_review', $home_id );
 
         $user->add_role( 'pending_applicant' );
+        CMM_Roles::set_home_meta( $user_id, $home_id, (string) get_field( 'address_code', $home_id ) );
 
         self::notify_admin_new_application( $home_id, $user );
 
