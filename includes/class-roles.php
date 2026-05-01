@@ -103,11 +103,13 @@ class CMM_Roles {
     public static function set_home_meta( int $user_id, int $home_id, string $code = '' ) {
         update_user_meta( $user_id, 'cmm_home_id',      $home_id );
         update_user_meta( $user_id, 'cmm_address_code', $code );
+        update_user_meta( $user_id, 'cmm_home_address', get_the_title( $home_id ) );
     }
 
     public static function clear_home_meta( int $user_id ) {
         delete_user_meta( $user_id, 'cmm_home_id' );
         delete_user_meta( $user_id, 'cmm_address_code' );
+        delete_user_meta( $user_id, 'cmm_home_address' );
     }
 
     // -------------------------------------------------------------------------
