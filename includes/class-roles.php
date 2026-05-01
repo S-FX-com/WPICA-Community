@@ -44,8 +44,8 @@ class CMM_Roles {
      * Keep user roles in sync whenever a cmm_home post is saved through ACF.
      * Called at priority 20 so ACF has already written the meta values.
      */
-    public static function sync_roles_on_save( int $post_id ) {
-        if ( get_post_type( $post_id ) !== 'cmm_home' ) return;
+    public static function sync_roles_on_save( $post_id ) {
+        if ( ! is_int( $post_id ) || get_post_type( $post_id ) !== 'cmm_home' ) return;
 
         $status  = get_field( 'membership_status', $post_id );
         $primary = (int) get_field( 'primary_contact', $post_id );
