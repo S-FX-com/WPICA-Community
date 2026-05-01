@@ -55,7 +55,8 @@ class CMM_CPT {
             'supports'        => [ 'title' ],
             'capability_type' => 'post',
             'map_meta_cap'    => true,
-            'show_in_rest'    => false,
+            'show_in_rest'    => true,
+            'rest_base'       => 'cmm-homes',
             'menu_icon'       => 'dashicons-admin-home',
         ] );
     }
