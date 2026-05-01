@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Blt Community
  * Description: Home-centric membership management for civic associations and community organizations.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      BLT
  * Text Domain: cmm
  * Requires at least: 6.0
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'CMM_VERSION', '1.1.0' );
+define( 'CMM_VERSION', '1.2.0' );
 define( 'CMM_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'CMM_URL',     plugin_dir_url( __FILE__ ) );
 
@@ -27,6 +27,7 @@ foreach ( [
     'class-reports',
     'class-frontend',
     'class-block',
+    'class-webhooks',
 ] as $class ) {
     require_once CMM_PATH . 'includes/' . $class . '.php';
 }
@@ -43,6 +44,7 @@ add_action( 'plugins_loaded', function() {
     CMM_Reports::init();
     CMM_Frontend::init();
     CMM_Block::init();
+    CMM_Webhooks::init();
 } );
 
 register_activation_hook( __FILE__, function() {

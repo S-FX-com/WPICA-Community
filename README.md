@@ -99,16 +99,36 @@ SureForms must be configured to handle the registration form. The plugin provide
 3. Add the remaining fields: First Name, Last Name, Email Address, Password, and a required "I am the property owner or authorized resident" checkbox
 4. Configure form submission to create a WordPress user account and call the CMM application handler
 
-#### SureForms — Payment Form & Home Activation
+#### SureForms — Webhooks
 
-> **Important:** SureForms is not currently configured to automatically flip a home's status to `active` after payment is confirmed. The payment-to-active step requires a custom integration.
+The plugin exposes two REST endpoints that SureForms can POST to on form submission. Configure them under **Community → Dashboard → SureForms Webhook Configuration**, which shows the exact URLs, secrets, and field mappings.
 
-The current workflow after admin approval:
-1. Admin clicks **Approve** → home status is set to `approved_pending_payment` and an email with a payment link is sent
-2. Applicant pays via your SureForms payment form
-3. **Home status must be manually set to `active`** by the admin in **Community → Homes**, OR a custom SureForms confirmation action / webhook must be built to call the status update
+Both endpoints use **POST / JSON** and require an `Authorization: Bearer <secret>` header. Each secret is auto-generated and can be regenerated from the Dashboard.
 
-Until this integration is built, the admin should monitor **Community → Applications → Approved — Awaiting Payment** and manually activate homes after confirming payment.
+**Registration form → Application webhook**
+
+`POST /wp-json/cmm/v1/webhook/application`
+
+| JSON field | Map to |
+|---|---|
+| `home_id` | Hidden field — auto-populated by the CMM Address Lookup block |
+| `email` | Email Address field |
+| `first_name` | First Name field |
+| `last_name` | Last Name field |
+
+What it does: looks up the WordPress user by email (SureForms creates the user first), links them to the home as primary contact, sets home status to `pending_review`, assigns `pending_applicant` role, and emails the admin.
+
+**Payment form → Payment confirmation webhook**
+
+`POST /wp-json/cmm/v1/webhook/payment`
+
+| JSON field | Map to |
+|---|---|
+| `home_id` | Hidden field — pass through from registration form |
+| `amount` | Payment amount (numeric) |
+| `date` | Payment date in `YYYY-MM-DD` — defaults to today if omitted |
+
+What it does: verifies the home is in `approved_pending_payment` status, records the dues amount and date, sets home status to `active`, and syncs roles (primary contact becomes `home_admin`; SureMembers gate opens automatically).
 
 ---
 
@@ -296,11 +316,8 @@ Roles are synced automatically via an `acf/save_post` hook whenever a home's sta
         Reject  → status: rejected
                   applicant receives decline email (optional reason)
 10. Applicant pays dues via SureForms payment form
-11. Admin confirms payment and manually sets home status to active in Community → Homes
-    (or a custom SureForms webhook can automate this step — see Dependency Configuration)
-12. Home status → active
-    User role   → home_admin (set automatically by ACF role-sync hook)
-    SureMembers access unlocked automatically via role
+11. SureForms fires the payment webhook → home status → active, dues recorded, roles synced
+    SureMembers access unlocked automatically via role assignment
 ```
 
 **REST endpoint for typeahead:**
@@ -504,8 +521,8 @@ Follow these steps for each new community (e.g., OBYC, Seacrest):
    - Add First Name, Last Name, Email, Password fields
    - Add a required checkbox: "I am the property owner or authorized resident"
 9. Set up the SureForms payment form for dues collection
-10. After an applicant pays, manually set their home to `active` in **Community → Homes** (or build a custom SureForms webhook to automate this — see [SureForms — Payment Form & Home Activation](#sureForms--payment-form--home-activation))
-11. Test the full flow: register → approve → pay → activate → verify access
+10. In SureForms, configure the **application webhook** on the registration form and the **payment webhook** on the payment form — both URLs and secrets are shown in **Community → Dashboard → SureForms Webhook Configuration**
+11. Test the full flow: register → approve → pay → verify access is granted automatically
 
 ---
 
@@ -520,6 +537,14 @@ All plugin options use the `cmm_` prefix in `wp_options`. Every WordPress instal
 ---
 
 ## Changelog
+
+### 1.2.0
+- New: SureForms webhook integration — two REST endpoints (`/webhook/application`, `/webhook/payment`) automate the full membership pipeline
+- Application webhook: receives registration form submission, links user to home, sets `pending_review`, notifies admin
+- Payment webhook: receives payment confirmation, sets home to `active`, records dues, syncs roles — SureMembers gate opens automatically
+- Accepts `home_id` or `address_code` on the payment endpoint
+- Webhook URLs, Bearer secrets, and SureForms field mapping guide shown in Community → Dashboard
+- Per-endpoint secret regeneration from the Dashboard
 
 ### 1.1.0
 - New: **CMM Address Lookup** Gutenberg block — search for it by name in the SureForms block inserter

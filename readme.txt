@@ -3,7 +3,7 @@ Contributors:      blt
 Tags:              membership, community, civic association, dues, HOA
 Requires at least: 6.0
 Tested up to:      6.7
-Stable tag:        1.1.0
+Stable tag:        1.2.0
 Requires PHP:      8.0
 License:           GPLv2 or later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
@@ -95,6 +95,14 @@ the reset logic regardless of the configured date.
 6. My Home Dashboard — member-facing shortcode with invite form.
 
 == Changelog ==
+
+= 1.2.0 =
+* New: SureForms webhook integration — two REST endpoints automate the full membership pipeline.
+* Application webhook (/wp-json/cmm/v1/webhook/application): links registrant to home, sets pending_review, notifies admin.
+* Payment webhook (/wp-json/cmm/v1/webhook/payment): activates home, records dues, syncs roles automatically.
+* Accepts home_id or address_code on the payment endpoint.
+* Webhook URLs, secrets, and SureForms field mapping shown in Community -> Dashboard.
+* Per-endpoint secret regeneration from the Dashboard.
 
 = 1.1.0 =
 * New: "CMM Address Lookup" Gutenberg block — search for it by name in SureForms or any block editor.
