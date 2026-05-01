@@ -75,8 +75,12 @@ class CMM_Webhooks {
         $first_name = sanitize_text_field( $params['first_name'] ?? '' );
         $last_name  = sanitize_text_field( $params['last_name'] ?? '' );
 
+        if ( ! $home_id && ! empty( $params['address_code'] ) ) {
+            $home_id = self::find_home_by_code( sanitize_text_field( $params['address_code'] ) );
+        }
+
         if ( ! $home_id || ! $email ) {
-            return new WP_REST_Response( [ 'error' => 'home_id and email are required' ], 400 );
+            return new WP_REST_Response( [ 'error' => 'home_id (or address_code) and email are required' ], 400 );
         }
 
         $home = get_post( $home_id );
