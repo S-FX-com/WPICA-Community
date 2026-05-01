@@ -79,8 +79,8 @@ class CMM_Webhooks {
             $home_id = self::find_home_by_code( sanitize_text_field( $params['address_code'] ) );
         }
 
-        if ( ! $home_id || ! $email ) {
-            return new WP_REST_Response( [ 'error' => 'home_id (or address_code) and email are required' ], 400 );
+        if ( ! $home_id ) {
+            return new WP_REST_Response( [ 'error' => 'home_id or address_code is required' ], 400 );
         }
 
         $home = get_post( $home_id );
@@ -95,9 +95,18 @@ class CMM_Webhooks {
             ], 409 );
         }
 
-        // Find the user SureForms created, or create a minimal account as fallback.
-        $user = get_user_by( 'email', $email );
+        // Resolve the member account: by email if supplied, otherwise use the
+        // home's existing primary contact (e.g. a renewal with no email in payload).
+        $user = $email ? get_user_by( 'email', $email ) : null;
+
         if ( ! $user ) {
+            $primary = get_field( 'primary_contact', $home_id );
+            if ( $primary ) {
+                $user = get_userdata( is_object( $primary ) ? $primary->ID : (int) $primary );
+            }
+        }
+
+        if ( ! $user && $email ) {
             $user_id = wp_create_user( $email, wp_generate_password(), $email );
             if ( is_wp_error( $user_id ) ) {
                 return new WP_REST_Response( [ 'error' => $user_id->get_error_message() ], 500 );
@@ -111,6 +120,10 @@ class CMM_Webhooks {
                 ] );
             }
             $user = get_userdata( $user_id );
+        }
+
+        if ( ! $user ) {
+            return new WP_REST_Response( [ 'error' => 'email is required to create a new member account' ], 400 );
         }
 
         $user_id = $user->ID;
