@@ -79,19 +79,19 @@ class CMM_Roles {
             $user->remove_role( 'home_member' );
             $user->remove_role( 'pending_applicant' );
 
+            // Always write meta for any user in linked_users — meta represents the
+            // administrative link, not access level. Roles (below) represent access.
+            self::set_home_meta( $uid, $post_id, $code );
+
             switch ( $status ) {
                 case 'active':
                     $user->add_role( $uid === $primary ? 'home_admin' : 'home_member' );
-                    self::set_home_meta( $uid, $post_id, $code );
                     break;
                 case 'approved_pending_payment':
                 case 'pending_review':
                     $user->add_role( 'pending_applicant' );
-                    self::set_home_meta( $uid, $post_id, $code );
                     break;
-                default: // expired / inactive / rejected
-                    self::clear_home_meta( $uid );
-                    break;
+                // expired / inactive / rejected → no community role, but meta stays
             }
         }
     }
