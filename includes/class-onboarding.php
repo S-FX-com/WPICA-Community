@@ -76,6 +76,9 @@ class CMM_Onboarding {
 
             <h2>Settings</h2>
             <?php self::settings_form( false ); ?>
+
+            <hr style="margin:32px 0;">
+            <?php self::render_webhook_section(); ?>
         </div>
         <?php
     }
@@ -214,6 +217,129 @@ class CMM_Onboarding {
                        value="<?php echo $is_wizard ? 'Save &amp; Get Started' : 'Save Settings'; ?>">
             </p>
         </form>
+        <?php
+    }
+
+    // -------------------------------------------------------------------------
+    // Webhook configuration section
+    // -------------------------------------------------------------------------
+
+    private static function render_webhook_section(): void {
+        $regenerated = isset( $_GET['cmm_secrets_regenerated'] );
+
+        $app_secret  = CMM_Webhooks::get_secret( 'application' );
+        $pay_secret  = CMM_Webhooks::get_secret( 'payment' );
+        $app_url     = rest_url( 'cmm/v1/webhook/application' );
+        $pay_url     = rest_url( 'cmm/v1/webhook/payment' );
+
+        $regen_url   = admin_url( 'admin-post.php' );
+        ?>
+        <h2>SureForms Webhook Configuration</h2>
+
+        <?php if ( $regenerated ): ?>
+        <div class="notice notice-success inline"><p>Secret regenerated. Update the Authorization header in SureForms.</p></div>
+        <?php endif; ?>
+
+        <p style="color:#646970;max-width:640px;">
+            Point SureForms webhooks at these URLs and add the corresponding secret as an
+            <code>Authorization: Bearer &lt;secret&gt;</code> header. Use <strong>POST / JSON</strong>.
+        </p>
+
+        <?php
+        self::webhook_row(
+            'Registration Form — Application Webhook',
+            $app_url,
+            $app_secret,
+            'application',
+            $regen_url,
+            [
+                'home_id'    => 'Hidden field — auto-populated by the CMM Address Lookup block',
+                'email'      => 'Email Address field',
+                'first_name' => 'First Name field',
+                'last_name'  => 'Last Name field',
+            ]
+        );
+
+        self::webhook_row(
+            'Payment Form — Payment Confirmation Webhook',
+            $pay_url,
+            $pay_secret,
+            'payment',
+            $regen_url,
+            [
+                'home_id' => 'Hidden field — pass through from the registration form',
+                'amount'  => 'Payment amount (numeric)',
+                'date'    => 'Payment date (YYYY-MM-DD) — defaults to today if omitted',
+            ]
+        );
+        ?>
+        <?php
+    }
+
+    private static function webhook_row(
+        string $title,
+        string $url,
+        string $secret,
+        string $type,
+        string $regen_url,
+        array  $fields
+    ): void {
+        ?>
+        <div style="background:#fff;border:1px solid #ddd;border-radius:6px;padding:20px 24px;margin-bottom:20px;max-width:720px;">
+            <h3 style="margin-top:0;"><?php echo esc_html( $title ); ?></h3>
+
+            <table class="form-table" role="presentation" style="margin:0;">
+                <tr>
+                    <th style="width:160px;padding:6px 10px 6px 0;">Request URL</th>
+                    <td>
+                        <code style="background:#f6f7f7;padding:4px 8px;border-radius:3px;user-select:all;word-break:break-all;">
+                            <?php echo esc_html( $url ); ?>
+                        </code>
+                    </td>
+                </tr>
+                <tr>
+                    <th style="padding:6px 10px 6px 0;">Method / Format</th>
+                    <td><code>POST</code> &nbsp;/&nbsp; <code>JSON</code></td>
+                </tr>
+                <tr>
+                    <th style="padding:6px 10px 6px 0;">Authorization</th>
+                    <td>
+                        Add header: <code>Authorization</code> →
+                        <code style="background:#f6f7f7;padding:4px 8px;border-radius:3px;user-select:all;">
+                            Bearer <?php echo esc_html( $secret ); ?>
+                        </code>
+                        &nbsp;
+                        <form method="post" action="<?php echo esc_url( $regen_url ); ?>" style="display:inline;">
+                            <?php wp_nonce_field( 'cmm_regenerate_webhook_secret' ); ?>
+                            <input type="hidden" name="action"      value="cmm_regenerate_webhook_secret">
+                            <input type="hidden" name="secret_type" value="<?php echo esc_attr( $type ); ?>">
+                            <button type="submit" class="button button-small"
+                                    onclick="return confirm('Regenerate this secret? You will need to update SureForms.');">
+                                Regenerate
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            </table>
+
+            <p style="margin:14px 0 6px;font-weight:600;">Expected JSON fields (map in SureForms → Add Data Filters):</p>
+            <table style="border-collapse:collapse;width:100%;">
+                <thead>
+                    <tr style="background:#f6f7f7;">
+                        <th style="padding:6px 12px;text-align:left;border:1px solid #ddd;width:140px;">Field key</th>
+                        <th style="padding:6px 12px;text-align:left;border:1px solid #ddd;">Map to</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $fields as $key => $description ): ?>
+                    <tr>
+                        <td style="padding:6px 12px;border:1px solid #ddd;font-family:monospace;"><?php echo esc_html( $key ); ?></td>
+                        <td style="padding:6px 12px;border:1px solid #ddd;color:#646970;"><?php echo esc_html( $description ); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
         <?php
     }
 
