@@ -118,20 +118,19 @@ class CMM_Roles {
 
     public static function render_home_profile_field( WP_User $user ) {
         $home_id = (int) get_user_meta( $user->ID, 'cmm_home_id', true );
+        $address = get_user_meta( $user->ID, 'cmm_home_address', true );
+        $code    = get_user_meta( $user->ID, 'cmm_address_code', true );
         ?>
         <h3>Community Membership</h3>
         <table class="form-table">
             <tr>
                 <th><label>Linked Home</label></th>
                 <td>
-                    <?php if ( $home_id && ( $home = get_post( $home_id ) ) ): ?>
+                    <?php if ( $home_id && $address ): ?>
                         <a href="<?php echo esc_url( get_edit_post_link( $home_id ) ); ?>">
-                            <?php echo esc_html( $home->post_title ); ?>
+                            <?php echo esc_html( $address ); ?>
                         </a>
-                        <?php
-                        $code = get_user_meta( $user->ID, 'cmm_address_code', true );
-                        if ( $code ) echo '&nbsp;&nbsp;<code>' . esc_html( $code ) . '</code>';
-                        ?>
+                        <?php if ( $code ) echo '&nbsp;&nbsp;<code>' . esc_html( $code ) . '</code>'; ?>
                     <?php else: ?>
                         <span style="color:#646970;">No home linked</span>
                     <?php endif; ?>
