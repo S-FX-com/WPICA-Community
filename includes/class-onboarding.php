@@ -212,6 +212,45 @@ class CMM_Onboarding {
                 </tr>
             </table>
 
+            <hr>
+            <h3>Approval Email Template</h3>
+            <p style="color:#646970;max-width:640px;">
+                This email is sent to applicants when their membership application is approved.
+                Use the following placeholders: <code>{first_name}</code>, <code>{last_name}</code>,
+                <code>{address}</code>, <code>{dues_amount}</code>, <code>{payment_url}</code>,
+                <code>{community_name}</code>, <code>{admin_email}</code>.
+            </p>
+            <?php
+            $default_subject = 'Your {community_name} membership application is approved!';
+            $default_body    = "Hi {first_name},\n\n"
+                . "Great news! Your application for {address} has been approved.\n\n"
+                . "To activate your membership, please complete your dues payment of \${dues_amount}:\n"
+                . "{payment_url}\n\n"
+                . "Once payment is confirmed, your account will be fully activated.\n\n"
+                . "Questions? Reply to this email or contact {admin_email}.\n\n"
+                . "Thank you,\n{community_name}";
+            $email_subject = get_option( 'cmm_approval_email_subject', $default_subject );
+            $email_body    = get_option( 'cmm_approval_email_body',    $default_body );
+            ?>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="cmm_approval_email_subject">Subject</label></th>
+                    <td>
+                        <input type="text" id="cmm_approval_email_subject" name="cmm_approval_email_subject"
+                               value="<?php echo esc_attr( $email_subject ); ?>"
+                               class="large-text">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="cmm_approval_email_body">Body</label></th>
+                    <td>
+                        <textarea id="cmm_approval_email_body" name="cmm_approval_email_body"
+                                  rows="10" class="large-text"><?php echo esc_textarea( $email_body ); ?></textarea>
+                        <p class="description">Plain text. Line breaks are preserved.</p>
+                    </td>
+                </tr>
+            </table>
+
             <p class="submit">
                 <input type="submit" class="button button-primary"
                        value="<?php echo $is_wizard ? 'Save &amp; Get Started' : 'Save Settings'; ?>">
@@ -253,7 +292,7 @@ class CMM_Onboarding {
             'application',
             $regen_url,
             [
-                'home_id'    => 'Hidden field — auto-populated by the CMM Address Lookup block',
+                'address'    => 'Address dropdown — the full address text selected by the applicant (e.g. "196 Pershing Blvd")',
                 'email'      => 'Email Address field',
                 'first_name' => 'First Name field',
                 'last_name'  => 'Last Name field',
@@ -357,6 +396,8 @@ class CMM_Onboarding {
         update_option( 'cmm_admin_email',       sanitize_email( $_POST['cmm_admin_email'] ?? '' ) );
         update_option( 'cmm_dues_reset_month',  sprintf( '%02d', (int) ( $_POST['cmm_dues_reset_month'] ?? 1 ) ) );
         update_option( 'cmm_dues_reset_day',    sprintf( '%02d', (int) ( $_POST['cmm_dues_reset_day'] ?? 1 ) ) );
+        update_option( 'cmm_approval_email_subject', sanitize_text_field( $_POST['cmm_approval_email_subject'] ?? '' ) );
+        update_option( 'cmm_approval_email_body',    sanitize_textarea_field( $_POST['cmm_approval_email_body'] ?? '' ) );
 
         if ( ! empty( $_POST['cmm_wizard'] ) ) {
             update_option( 'cmm_onboarding_complete', true );
