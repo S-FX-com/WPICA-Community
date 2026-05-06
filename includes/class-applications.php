@@ -50,8 +50,7 @@ class CMM_Applications {
         $action_done = $_GET['cmm_action'] ?? '';
         ?>
         <div class="wrap">
-            <h1 class="wp-heading-inline">Member Applications</h1>
-            <hr class="wp-header-end">
+            <h1>Member Applications</h1>
 
             <?php if ( $action_done === 'approved' ): ?>
             <div class="notice notice-success inline"><p>Application approved. Payment email sent.</p></div>
@@ -256,6 +255,7 @@ class CMM_Applications {
         }
 
         update_field( 'membership_status', 'approved_pending_payment', $home_id );
+        CMM_Roles::sync_roles_on_save( $home_id );
 
         $primary = (int) get_field( 'primary_contact', $home_id );
         if ( $primary && ! empty( $_POST['send_email'] ) ) {
@@ -276,6 +276,7 @@ class CMM_Applications {
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
 
         update_field( 'membership_status', 'rejected', $home_id );
+        CMM_Roles::sync_roles_on_save( $home_id );
 
         $reason  = sanitize_textarea_field( $_POST['reason'] ?? '' );
         $primary = (int) get_field( 'primary_contact', $home_id );
@@ -319,29 +320,29 @@ class CMM_Applications {
         check_admin_referer( 'cmm_reset_' . $home_id );
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
 
-        // Clear all linked users including any pending conflict user.
+        // Stash any pending conflict applicant so we can also clean up their
+        // roles/meta — they are not in linked_users yet.
         $conflict_uid = (int) get_post_meta( $home_id, 'cmm_pending_conflict_user_id', true );
-        $linked       = get_field( 'linked_users', $home_id ) ?: [];
-        $all_users    = array_unique( array_filter( array_merge(
-            array_map( fn( $e ) => is_object( $e ) ? $e->ID : (int) $e, $linked ),
-            $conflict_uid ? [ $conflict_uid ] : []
-        ) ) );
-
-        foreach ( $all_users as $uid ) {
-            $user = get_userdata( $uid );
-            if ( $user ) {
-                $user->remove_role( 'pending_applicant' );
-                $user->remove_role( 'home_admin' );
-                $user->remove_role( 'home_member' );
-                CMM_Roles::clear_home_meta( $uid );
-            }
-        }
 
         update_field( 'membership_status', 'inactive', $home_id );
         update_field( 'primary_contact',   '',         $home_id );
         update_field( 'linked_users',      [],         $home_id );
         update_field( 'dues_amount_paid',  '',         $home_id );
         update_field( 'dues_paid_date',    '',         $home_id );
+
+        // sync_roles_on_save finds previously linked users via cmm_home_id meta
+        // and strips their plugin-managed roles + clears their meta cleanly.
+        CMM_Roles::sync_roles_on_save( $home_id );
+
+        // Conflict applicant lives outside linked_users — clean them up directly.
+        if ( $conflict_uid ) {
+            $conflict_user = get_userdata( $conflict_uid );
+            if ( $conflict_user ) {
+                $conflict_user->remove_role( 'pending_applicant' );
+                CMM_Roles::clear_home_meta( $conflict_uid );
+                delete_user_meta( $conflict_uid, 'cmm_assigned_role' );
+            }
+        }
 
         delete_post_meta( $home_id, 'cmm_has_member_conflict' );
         delete_post_meta( $home_id, 'cmm_pending_conflict_user_id' );
@@ -366,22 +367,14 @@ class CMM_Applications {
             exit;
         }
 
-        // Demote and unlink the previous primary contact.
-        $old_uid = (int) get_field( 'primary_contact', $home_id );
-        if ( $old_uid && $old_uid !== $conflict_uid ) {
-            $old_user = get_userdata( $old_uid );
-            if ( $old_user ) {
-                $old_user->remove_role( 'home_admin' );
-                $old_user->remove_role( 'home_member' );
-                $old_user->remove_role( 'pending_applicant' );
-                CMM_Roles::clear_home_meta( $old_uid );
-            }
-        }
-
         // Install the new applicant as sole primary contact and approve.
+        // sync_roles_on_save sees the previous primary still has cmm_home_id
+        // meta but is no longer in linked_users, so it strips their managed
+        // roles (including the configured Approved Member Role) and meta.
         update_field( 'primary_contact',   $conflict_uid,              $home_id );
         update_field( 'linked_users',      [ $conflict_uid ],          $home_id );
         update_field( 'membership_status', 'approved_pending_payment', $home_id );
+        CMM_Roles::sync_roles_on_save( $home_id );
 
         delete_post_meta( $home_id, 'cmm_has_member_conflict' );
         delete_post_meta( $home_id, 'cmm_pending_conflict_user_id' );
@@ -419,6 +412,7 @@ class CMM_Applications {
 
         update_field( 'linked_users',      $existing_ids,              $home_id );
         update_field( 'membership_status', 'approved_pending_payment', $home_id );
+        CMM_Roles::sync_roles_on_save( $home_id );
 
         delete_post_meta( $home_id, 'cmm_has_member_conflict' );
         delete_post_meta( $home_id, 'cmm_pending_conflict_user_id' );
@@ -442,18 +436,17 @@ class CMM_Applications {
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
 
         $conflict_uid = (int) get_post_meta( $home_id, 'cmm_pending_conflict_user_id', true );
-        if ( $conflict_uid ) {
-            $conflict_user = get_userdata( $conflict_uid );
-            if ( $conflict_user ) {
-                $conflict_user->remove_role( 'pending_applicant' );
-                CMM_Roles::clear_home_meta( $conflict_uid );
-                self::send_rejection_email( $conflict_uid, $home_id, '' );
-            }
-        }
 
         // Restore the home to whatever status it had before the conflict application.
+        // sync_roles_on_save finds the conflict applicant via their cmm_home_id
+        // meta, sees they're not in linked_users, and strips their roles + meta.
         $prev_status = get_post_meta( $home_id, 'cmm_conflict_prev_status', true ) ?: 'inactive';
         update_field( 'membership_status', $prev_status, $home_id );
+        CMM_Roles::sync_roles_on_save( $home_id );
+
+        if ( $conflict_uid ) {
+            self::send_rejection_email( $conflict_uid, $home_id, '' );
+        }
 
         delete_post_meta( $home_id, 'cmm_has_member_conflict' );
         delete_post_meta( $home_id, 'cmm_pending_conflict_user_id' );

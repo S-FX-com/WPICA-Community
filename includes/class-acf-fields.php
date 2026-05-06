@@ -8,6 +8,7 @@ class CMM_ACF_Fields {
     public static function init() {
         add_action( 'acf/init',      [ __CLASS__, 'register_fields' ] );
         add_action( 'add_meta_boxes', [ __CLASS__, 'register_metaboxes' ] );
+        add_action( 'admin_footer',  [ __CLASS__, 'render_clear_primary_form' ] );
         add_action( 'admin_post_cmm_clear_primary_contact', [ __CLASS__, 'handle_clear_primary' ] );
     }
 
@@ -121,19 +122,30 @@ class CMM_ACF_Fields {
             <strong><?php echo esc_html( $user->display_name ); ?></strong><br>
             <span style="color:#646970;font-size:12px;"><?php echo esc_html( $user->user_email ); ?></span>
         </p>
-        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-            <?php wp_nonce_field( 'cmm_clear_primary_' . $post->ID ); ?>
-            <input type="hidden" name="action"  value="cmm_clear_primary_contact">
-            <input type="hidden" name="home_id" value="<?php echo absint( $post->ID ); ?>">
-            <button type="submit" class="button button-small"
-                    style="color:#d63638;border-color:#d63638;"
-                    onclick="return confirm('Remove <?php echo esc_js( $user->display_name ); ?> as primary contact?')">
-                &times; Remove Primary Contact
-            </button>
-        </form>
+        <button type="button" class="button button-small"
+                style="color:#d63638;border-color:#d63638;"
+                onclick="if(confirm('Remove <?php echo esc_js( $user->display_name ); ?> as primary contact?')) document.getElementById('cmm-clear-primary-form').submit()">
+            &times; Remove Primary Contact
+        </button>
         <?php else: ?>
         <p style="color:#646970;margin:0;font-size:13px;">No primary contact assigned.</p>
         <?php endif; ?>
+        <?php
+    }
+
+    public static function render_clear_primary_form(): void {
+        $screen = get_current_screen();
+        if ( ! $screen || $screen->post_type !== 'cmm_home' ) return;
+        global $post;
+        if ( ! $post ) return;
+        ?>
+        <form id="cmm-clear-primary-form" method="post"
+              action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"
+              style="display:none;">
+            <?php wp_nonce_field( 'cmm_clear_primary_' . $post->ID ); ?>
+            <input type="hidden" name="action"  value="cmm_clear_primary_contact">
+            <input type="hidden" name="home_id" value="<?php echo absint( $post->ID ); ?>">
+        </form>
         <?php
     }
 

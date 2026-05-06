@@ -49,10 +49,11 @@ class CMM_Roles {
     public static function sync_roles_on_save( $post_id ) {
         if ( ! is_int( $post_id ) || get_post_type( $post_id ) !== 'cmm_home' ) return;
 
-        $status  = get_field( 'membership_status', $post_id );
-        $primary = (int) get_field( 'primary_contact', $post_id );
-        $linked  = array_map( 'intval', (array) ( get_field( 'linked_users', $post_id ) ?: [] ) );
-        $code    = (string) get_field( 'address_code', $post_id );
+        $status      = get_field( 'membership_status', $post_id );
+        $primary     = (int) get_field( 'primary_contact', $post_id );
+        $linked      = array_map( 'intval', (array) ( get_field( 'linked_users', $post_id ) ?: [] ) );
+        $code        = (string) get_field( 'address_code', $post_id );
+        $member_role = get_option( 'cmm_approved_role', 'home_member' );
 
         // Clear roles and meta for users previously linked but no longer in the list.
         $prev_linked = get_users( [
@@ -64,36 +65,58 @@ class CMM_Roles {
             $uid = (int) $uid;
             if ( in_array( $uid, $linked, true ) ) continue;
             $u = new WP_User( $uid );
-            $u->remove_role( 'home_admin' );
-            $u->remove_role( 'home_member' );
-            $u->remove_role( 'pending_applicant' );
-            delete_user_meta( $uid, 'cmm_home_id' );
-            delete_user_meta( $uid, 'cmm_address_code' );
+            self::strip_managed_roles( $u );
+            self::clear_home_meta( $uid );
         }
 
         foreach ( $linked as $uid ) {
             $user = new WP_User( $uid );
             if ( ! $user->exists() ) continue;
 
-            $user->remove_role( 'home_admin' );
-            $user->remove_role( 'home_member' );
-            $user->remove_role( 'pending_applicant' );
+            self::strip_managed_roles( $user );
 
             // Always write meta for any user in linked_users — meta represents the
             // administrative link, not access level. Roles (below) represent access.
             self::set_home_meta( $uid, $post_id, $code );
 
+            $assigned = '';
             switch ( $status ) {
                 case 'active':
-                    $user->add_role( $uid === $primary ? 'home_admin' : 'home_member' );
+                    $assigned = $uid === $primary ? 'home_admin' : $member_role;
                     break;
                 case 'approved_pending_payment':
                 case 'pending_review':
-                    $user->add_role( 'pending_applicant' );
+                    $assigned = 'pending_applicant';
                     break;
                 // expired / inactive / rejected → no community role, but meta stays
             }
+
+            if ( $assigned ) {
+                $user->add_role( $assigned );
+                update_user_meta( $uid, 'cmm_assigned_role', $assigned );
+            }
         }
+    }
+
+    /**
+     * Remove every role this plugin previously granted the user.
+     *
+     * Built-in plugin roles (home_admin, home_member, pending_applicant) are
+     * always removed. The currently-stored cmm_assigned_role is also removed —
+     * this is what allows the configurable Approved Member Role to be revoked
+     * cleanly when the admin changes the setting or unlinks the user, without
+     * stripping unrelated WordPress roles the user may also hold.
+     */
+    private static function strip_managed_roles( WP_User $user ): void {
+        $user->remove_role( 'home_admin' );
+        $user->remove_role( 'home_member' );
+        $user->remove_role( 'pending_applicant' );
+
+        $assigned = (string) get_user_meta( $user->ID, 'cmm_assigned_role', true );
+        if ( $assigned && ! in_array( $assigned, [ 'home_admin', 'home_member', 'pending_applicant' ], true ) ) {
+            $user->remove_role( $assigned );
+        }
+        delete_user_meta( $user->ID, 'cmm_assigned_role' );
     }
 
     // -------------------------------------------------------------------------
