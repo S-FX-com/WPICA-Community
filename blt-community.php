@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Blt Community
  * Description: Home-centric membership management for civic associations and community organizations.
- * Version:     1.3.5
+ * Version:     1.3.6
  * Author:      BLT
  * Text Domain: cmm
  * Requires at least: 6.0
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'CMM_VERSION', '1.3.5' );
+define( 'CMM_VERSION', '1.3.6' );
 define( 'CMM_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'CMM_URL',     plugin_dir_url( __FILE__ ) );
 

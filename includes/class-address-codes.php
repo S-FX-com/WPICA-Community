@@ -150,13 +150,14 @@ class CMM_Address_Codes {
         }
         ?>
         <div class="wrap">
-            <h1 class="wp-heading-inline">Address Code Manager</h1>
-            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
-                <?php wp_nonce_field( 'cmm_export_address_codes' ); ?>
-                <input type="hidden" name="action" value="cmm_export_address_codes">
-                <button type="submit" class="page-title-action">&#8595; Export CSV</button>
-            </form>
-            <hr class="wp-header-end">
+            <div style="float:right;">
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                    <?php wp_nonce_field( 'cmm_export_address_codes' ); ?>
+                    <input type="hidden" name="action" value="cmm_export_address_codes">
+                    <button type="submit" class="button">&#8595; Export CSV</button>
+                </form>
+            </div>
+            <h1>Address Code Manager</h1>
 
             <?php if ( $saved ): ?>
             <div class="notice notice-success inline"><p>Codes saved successfully.</p></div>

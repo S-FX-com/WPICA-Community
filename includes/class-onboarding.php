@@ -29,8 +29,7 @@ class CMM_Onboarding {
         $saved = isset( $_GET['saved'] );
         ?>
         <div class="wrap cmm-onboarding">
-            <h1 class="wp-heading-inline">&#127968; Welcome to Blt Community</h1>
-            <hr class="wp-header-end">
+            <h1>&#127968; Welcome to Blt Community</h1>
             <p>Complete this one-time setup to configure your community.</p>
 
             <?php if ( $saved ): ?>
@@ -58,8 +57,7 @@ class CMM_Onboarding {
         $pending = self::count_by_status( 'pending_review' );
         ?>
         <div class="wrap">
-            <h1 class="wp-heading-inline">&#127968; <?php echo esc_html( $name ?: 'Community' ); ?> — Dashboard</h1>
-            <hr class="wp-header-end">
+            <h1>&#127968; <?php echo esc_html( $name ?: 'Community' ); ?> — Dashboard</h1>
 
             <?php
             $cmm_action = sanitize_key( $_GET['cmm_action'] ?? '' );
