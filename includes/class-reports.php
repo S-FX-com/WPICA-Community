@@ -38,7 +38,8 @@ class CMM_Reports {
         $totals = self::get_totals();
         ?>
         <div class="wrap">
-            <h1>Reports</h1>
+            <h1 class="wp-heading-inline">Reports</h1>
+            <hr class="wp-header-end">
 
             <?php if ( $notice ): ?>
             <div class="notice notice-success inline"><p><?php echo esc_html( $notice ); ?></p></div>
