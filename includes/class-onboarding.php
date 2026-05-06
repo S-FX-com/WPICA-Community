@@ -130,7 +130,10 @@ class CMM_Onboarding {
         $payment_url = get_option( 'cmm_payment_url',       home_url( '/membership-payment/' ) );
         $reset_month = get_option( 'cmm_dues_reset_month',  '01' );
         $reset_day   = get_option( 'cmm_dues_reset_day',    '01' );
+        $member_role = get_option( 'cmm_approved_role',     'home_member' );
         $next        = self::get_next_expiration();
+
+        $all_roles = wp_roles()->get_names();
 
         $months = [
             '01' => 'January',  '02' => 'February', '03' => 'March',
@@ -192,6 +195,24 @@ class CMM_Onboarding {
                                value="<?php echo esc_attr( $payment_url ); ?>"
                                class="large-text">
                         <p class="description">Full URL of the dues payment page. Used in approval emails as <code>{payment_url}</code>.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="cmm_approved_role">Approved Member Role</label></th>
+                    <td>
+                        <select id="cmm_approved_role" name="cmm_approved_role">
+                            <?php foreach ( $all_roles as $role_key => $role_label ): ?>
+                            <option value="<?php echo esc_attr( $role_key ); ?>"
+                                <?php selected( $member_role, $role_key ); ?>>
+                                <?php echo esc_html( translate_user_role( $role_label ) ); ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="description">
+                            WordPress role assigned to linked users when their home becomes <strong>Active</strong>.
+                            The primary contact additionally receives the built-in <code>home_admin</code> role
+                            (which grants the ability to invite or remove household members).
+                        </p>
                     </td>
                 </tr>
             </table>
@@ -437,6 +458,13 @@ class CMM_Onboarding {
         update_option( 'cmm_dues_reset_day',    sprintf( '%02d', (int) ( $_POST['cmm_dues_reset_day'] ?? 1 ) ) );
         update_option( 'cmm_approval_email_subject', sanitize_text_field( $_POST['cmm_approval_email_subject'] ?? '' ) );
         update_option( 'cmm_approval_email_body',    sanitize_textarea_field( $_POST['cmm_approval_email_body'] ?? '' ) );
+
+        // Approved Member Role — only persist a value that exists in wp_roles.
+        $submitted_role = sanitize_key( $_POST['cmm_approved_role'] ?? 'home_member' );
+        if ( ! array_key_exists( $submitted_role, wp_roles()->get_names() ) ) {
+            $submitted_role = 'home_member';
+        }
+        update_option( 'cmm_approved_role', $submitted_role );
 
         if ( ! empty( $_POST['cmm_wizard'] ) ) {
             update_option( 'cmm_onboarding_complete', true );

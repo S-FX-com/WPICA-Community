@@ -41,14 +41,10 @@ class CMM_Dues {
         $count = 0;
         foreach ( $active_homes as $home ) {
             update_field( 'membership_status', 'expired', $home->ID );
-
-            $linked = get_field( 'linked_users', $home->ID ) ?: [];
-            foreach ( $linked as $uid ) {
-                $user = new WP_User( (int) $uid );
-                if ( ! $user->exists() ) continue;
-                $user->remove_role( 'home_admin' );
-                $user->remove_role( 'home_member' );
-            }
+            // Single source of truth — strips home_admin / home_member /
+            // pending_applicant / configured Approved Member Role for every
+            // user linked to this home, since expired status grants none of them.
+            CMM_Roles::sync_roles_on_save( $home->ID );
             $count++;
         }
 

@@ -139,16 +139,17 @@ class CMM_Frontend {
             wp_update_user( [ 'ID' => $user_id, 'display_name' => $data['name'] ] );
         }
 
-        // Link user to home.
-        $linked = get_field( 'linked_users', $home_id ) ?: [];
+        // Link user to home. Normalize ACF return shape (objects/strings) to ints
+        // so the strict in_array check below reliably detects duplicates.
+        $linked = array_map( 'intval', (array) ( get_field( 'linked_users', $home_id ) ?: [] ) );
         if ( ! in_array( $user_id, $linked, true ) ) {
             $linked[] = $user_id;
             update_field( 'linked_users', $linked, $home_id );
         }
 
-        $user = new WP_User( $user_id );
-        $user->add_role( 'home_member' );
-        CMM_Roles::set_home_meta( $user_id, $home_id, (string) get_field( 'address_code', $home_id ) );
+        // Centralized role sync — assigns the configured Approved Member Role
+        // (or pending_applicant if the home is mid-approval) based on status.
+        CMM_Roles::sync_roles_on_save( $home_id );
 
         delete_transient( 'cmm_invite_' . $token );
 
@@ -177,14 +178,14 @@ class CMM_Frontend {
             wp_send_json_error( 'Cannot remove the primary contact.' );
         }
 
-        $linked = get_field( 'linked_users', $home_id ) ?: [];
-        $linked = array_values( array_filter( $linked, fn( $id ) => (int) $id !== $target_uid ) );
+        $linked = array_map( 'intval', (array) ( get_field( 'linked_users', $home_id ) ?: [] ) );
+        $linked = array_values( array_filter( $linked, fn( $id ) => $id !== $target_uid ) );
         update_field( 'linked_users', $linked, $home_id );
 
-        $user = new WP_User( $target_uid );
-        $user->remove_role( 'home_member' );
-        $user->remove_role( 'home_admin' );
-        CMM_Roles::clear_home_meta( $target_uid );
+        // sync_roles_on_save sees target_uid still has cmm_home_id meta but is
+        // no longer in linked_users, so it strips all plugin-managed roles
+        // (home_admin, home_member, pending_applicant, configured role) and meta.
+        CMM_Roles::sync_roles_on_save( $home_id );
 
         wp_send_json_success( 'User removed.' );
     }
