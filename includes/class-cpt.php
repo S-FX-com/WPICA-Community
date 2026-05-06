@@ -11,6 +11,7 @@ class CMM_CPT {
         add_filter( 'manage_cmm_home_posts_columns',       [ __CLASS__, 'list_columns' ] );
         add_action( 'manage_cmm_home_posts_custom_column', [ __CLASS__, 'list_column_content' ], 10, 2 );
         add_action( 'restrict_manage_posts',               [ __CLASS__, 'export_button' ] );
+        add_action( 'admin_footer',                        [ __CLASS__, 'render_export_form' ] );
         add_action( 'admin_post_cmm_export_homes',         [ __CLASS__, 'export_csv' ] );
     }
 
@@ -77,10 +78,22 @@ class CMM_CPT {
     public static function export_button( string $post_type ): void {
         if ( $post_type !== 'cmm_home' ) return;
         ?>
-        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;">
+        <button type="button" class="button"
+                onclick="document.getElementById('cmm-export-homes-form').submit()">
+            &#8595; Export CSV
+        </button>
+        <?php
+    }
+
+    public static function render_export_form(): void {
+        $screen = get_current_screen();
+        if ( ! $screen || $screen->post_type !== 'cmm_home' || $screen->base !== 'edit' ) return;
+        ?>
+        <form id="cmm-export-homes-form" method="post"
+              action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"
+              style="display:none;">
             <?php wp_nonce_field( 'cmm_export_homes' ); ?>
             <input type="hidden" name="action" value="cmm_export_homes">
-            <button type="submit" class="button">&#8595; Export CSV</button>
         </form>
         <?php
     }
