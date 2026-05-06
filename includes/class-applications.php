@@ -474,7 +474,7 @@ class CMM_Applications {
         $admin_email = get_option( 'cmm_admin_email', get_option( 'admin_email' ) );
         $dues        = number_format( (float) get_option( 'cmm_dues_amount', 0 ), 2 );
         $address     = get_the_title( $home_id );
-        $payment_url = home_url( '/membership-payment/' );
+        $payment_url = get_option( 'cmm_payment_url', home_url( '/membership-payment/' ) );
 
         $default_subject = 'Your {community_name} membership application is approved!';
         $default_body    = "Hi {first_name},\n\n"
