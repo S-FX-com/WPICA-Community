@@ -20,10 +20,11 @@ class CMM_Address_Codes {
     ];
 
     public static function init() {
-        add_action( 'save_post_cmm_home',            [ __CLASS__, 'generate_on_save' ], 10, 2 );
-        add_action( 'admin_notices',                  [ __CLASS__, 'collision_notice' ] );
-        add_action( 'admin_menu',                     [ __CLASS__, 'register_menu' ] );
-        add_action( 'admin_post_cmm_save_codes',      [ __CLASS__, 'save_overrides' ] );
+        add_action( 'save_post_cmm_home',                  [ __CLASS__, 'generate_on_save' ], 10, 2 );
+        add_action( 'admin_notices',                        [ __CLASS__, 'collision_notice' ] );
+        add_action( 'admin_menu',                           [ __CLASS__, 'register_menu' ] );
+        add_action( 'admin_post_cmm_save_codes',            [ __CLASS__, 'save_overrides' ] );
+        add_action( 'admin_post_cmm_export_address_codes',  [ __CLASS__, 'export_csv' ] );
     }
 
     // -------------------------------------------------------------------------
@@ -151,6 +152,14 @@ class CMM_Address_Codes {
         <div class="wrap">
             <h1>Address Code Manager</h1>
 
+            <div style="float:right;margin-top:8px;">
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                    <?php wp_nonce_field( 'cmm_export_address_codes' ); ?>
+                    <input type="hidden" name="action" value="cmm_export_address_codes">
+                    <button type="submit" class="button">&#8595; Export CSV</button>
+                </form>
+            </div>
+
             <?php if ( $saved ): ?>
             <div class="notice notice-success inline"><p>Codes saved successfully.</p></div>
             <?php endif; ?>
@@ -227,6 +236,42 @@ class CMM_Address_Codes {
         self::check_collisions();
 
         wp_redirect( admin_url( 'admin.php?page=cmm-address-codes&saved=1' ) );
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // CSV export — Address, Code, Collision status
+    // -------------------------------------------------------------------------
+
+    public static function export_csv() {
+        check_admin_referer( 'cmm_export_address_codes' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+
+        $homes      = get_posts( [ 'post_type' => 'cmm_home', 'posts_per_page' => -1, 'orderby' => 'title', 'order' => 'ASC' ] );
+        $collisions = get_option( 'cmm_code_collisions', [] );
+
+        $collision_ids = [];
+        foreach ( $collisions as $ids ) {
+            foreach ( $ids as $id ) {
+                $collision_ids[ $id ] = true;
+            }
+        }
+
+        $filename = 'cmm-address-codes-' . date( 'Y-m-d' ) . '.csv';
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+        header( 'Pragma: no-cache' );
+
+        $fh = fopen( 'php://output', 'w' );
+        fputcsv( $fh, [ 'Address', 'Code', 'Code Status' ] );
+
+        foreach ( $homes as $home ) {
+            $code   = get_field( 'address_code', $home->ID ) ?: '';
+            $status = isset( $collision_ids[ $home->ID ] ) ? 'Collision' : 'OK';
+            fputcsv( $fh, [ $home->post_title, $code, $status ] );
+        }
+
+        fclose( $fh );
         exit;
     }
 }
