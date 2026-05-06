@@ -50,7 +50,8 @@ class CMM_Applications {
         $action_done = $_GET['cmm_action'] ?? '';
         ?>
         <div class="wrap">
-            <h1>Member Applications</h1>
+            <h1 class="wp-heading-inline">Member Applications</h1>
+            <hr class="wp-header-end">
 
             <?php if ( $action_done === 'approved' ): ?>
             <div class="notice notice-success inline"><p>Application approved. Payment email sent.</p></div>
