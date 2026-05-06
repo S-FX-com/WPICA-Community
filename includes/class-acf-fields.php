@@ -70,6 +70,7 @@ class CMM_ACF_Fields {
                     'name'          => 'primary_contact',
                     'type'          => 'user',
                     'multiple'      => 0,
+                    'allow_null'    => 1,
                     'return_format' => 'id',
                 ],
 
