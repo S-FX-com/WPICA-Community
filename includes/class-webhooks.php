@@ -57,11 +57,12 @@ class CMM_Webhooks {
     // -------------------------------------------------------------------------
     // Application webhook
     //
-    // Expected JSON: { "home_id": 123, "email": "...", "first_name": "...", "last_name": "..." }
+    // Expected JSON: { "address": "196 Pershing Blvd", "email": "...", "first_name": "...", "last_name": "..." }
+    //   OR (legacy):  { "home_id": 123, ... }  |  { "address_code": "PER196", ... }
     //
-    // SureForms creates the WP user before firing this webhook. We look up the
-    // user by email, link them to the home, and set the home to pending_review.
-    // If the user doesn't exist yet we create a minimal account as a fallback.
+    // The address field is matched against the Homes post title. If a different
+    // member is already linked to that address, the application is flagged as a
+    // conflict and held for admin review rather than overwriting the existing record.
     // -------------------------------------------------------------------------
 
     public static function handle_application( WP_REST_Request $request ): WP_REST_Response {
@@ -70,17 +71,22 @@ class CMM_Webhooks {
         }
 
         $params     = $request->get_json_params() ?: [];
+        $address    = sanitize_text_field( $params['address'] ?? '' );
         $home_id    = (int) ( $params['home_id'] ?? 0 );
         $email      = sanitize_email( $params['email'] ?? '' );
         $first_name = sanitize_text_field( $params['first_name'] ?? '' );
         $last_name  = sanitize_text_field( $params['last_name'] ?? '' );
 
+        // Resolve home: address text → address_code → home_id (in preference order).
+        if ( ! $home_id && $address ) {
+            $home_id = self::find_home_by_address( $address );
+        }
         if ( ! $home_id && ! empty( $params['address_code'] ) ) {
             $home_id = self::find_home_by_code( sanitize_text_field( $params['address_code'] ) );
         }
 
         if ( ! $home_id ) {
-            return new WP_REST_Response( [ 'error' => 'home_id or address_code is required' ], 400 );
+            return new WP_REST_Response( [ 'error' => 'address, home_id, or address_code is required' ], 400 );
         }
 
         $home = get_post( $home_id );
@@ -95,15 +101,18 @@ class CMM_Webhooks {
             ], 409 );
         }
 
-        // Resolve the member account: by email if supplied, otherwise use the
-        // home's existing primary contact (e.g. a renewal with no email in payload).
+        // Check for an existing member already linked to this address.
+        $existing_primary = get_field( 'primary_contact', $home_id );
+        $existing_uid     = $existing_primary
+            ? (int) ( is_object( $existing_primary ) ? $existing_primary->ID : $existing_primary )
+            : 0;
+
+        // Resolve the incoming applicant: by email if supplied, otherwise fall back
+        // to the existing primary contact (renewal where no email is in the payload).
         $user = $email ? get_user_by( 'email', $email ) : null;
 
-        if ( ! $user ) {
-            $primary = get_field( 'primary_contact', $home_id );
-            if ( $primary ) {
-                $user = get_userdata( is_object( $primary ) ? $primary->ID : (int) $primary );
-            }
+        if ( ! $user && ! $email && $existing_uid ) {
+            $user = get_userdata( $existing_uid );
         }
 
         if ( ! $user && $email ) {
@@ -126,15 +135,42 @@ class CMM_Webhooks {
             return new WP_REST_Response( [ 'error' => 'email is required to create a new member account' ], 400 );
         }
 
-        $user_id = $user->ID;
+        $user_id      = $user->ID;
+        $address_code = (string) get_field( 'address_code', $home_id );
 
-        // Link user to home and open the application.
+        // If a different member is already linked to this address, flag the
+        // application as a conflict and hold it for admin review.
+        if ( $existing_uid && $existing_uid !== $user_id ) {
+            update_post_meta( $home_id, 'cmm_has_member_conflict',       1 );
+            update_post_meta( $home_id, 'cmm_pending_conflict_user_id',  $user_id );
+            update_post_meta( $home_id, 'cmm_conflict_prev_status',      $current_status );
+
+            update_field( 'membership_status', 'pending_review', $home_id );
+            $user->add_role( 'pending_applicant' );
+            CMM_Roles::set_home_meta( $user_id, $home_id, $address_code );
+
+            self::notify_admin_conflict_application( $home_id, $user, get_userdata( $existing_uid ) );
+
+            return new WP_REST_Response( [
+                'success'  => true,
+                'home_id'  => $home_id,
+                'user_id'  => $user_id,
+                'status'   => 'pending_review',
+                'conflict' => true,
+            ], 200 );
+        }
+
+        // No conflict — link user to home and open the application normally.
+        delete_post_meta( $home_id, 'cmm_has_member_conflict' );
+        delete_post_meta( $home_id, 'cmm_pending_conflict_user_id' );
+        delete_post_meta( $home_id, 'cmm_conflict_prev_status' );
+
         update_field( 'primary_contact',   $user_id,         $home_id );
         update_field( 'linked_users',      [ $user_id ],     $home_id );
         update_field( 'membership_status', 'pending_review', $home_id );
 
         $user->add_role( 'pending_applicant' );
-        CMM_Roles::set_home_meta( $user_id, $home_id, (string) get_field( 'address_code', $home_id ) );
+        CMM_Roles::set_home_meta( $user_id, $home_id, $address_code );
 
         self::notify_admin_new_application( $home_id, $user );
 
@@ -228,6 +264,22 @@ class CMM_Webhooks {
     // Helpers
     // -------------------------------------------------------------------------
 
+    /**
+     * Find a home by its full address text (post title). Case-insensitive on
+     * most MySQL collations. Used when SureForms sends the address label rather
+     * than the numeric ID.
+     */
+    private static function find_home_by_address( string $address ): int {
+        $posts = get_posts( [
+            'post_type'   => 'cmm_home',
+            'title'       => $address,
+            'numberposts' => 1,
+            'post_status' => 'publish',
+            'fields'      => 'ids',
+        ] );
+        return $posts ? (int) $posts[0] : 0;
+    }
+
     private static function find_home_by_code( string $code ): int {
         global $wpdb;
         return (int) $wpdb->get_var( $wpdb->prepare(
@@ -250,6 +302,24 @@ class CMM_Webhooks {
             . "Name:    {$user->display_name}\n"
             . "Email:   {$user->user_email}\n\n"
             . "Review it here:\n{$review_url}\n\n"
+            . $community;
+
+        wp_mail( $admin_email, $subject, $message, [ "From: {$community} <{$admin_email}>" ] );
+    }
+
+    private static function notify_admin_conflict_application( int $home_id, WP_User $new_user, WP_User $existing_user ) {
+        $community   = get_option( 'cmm_community_name', 'Community' );
+        $admin_email = get_option( 'cmm_admin_email', get_option( 'admin_email' ) );
+        $address     = get_the_title( $home_id );
+        $review_url  = admin_url( 'admin.php?page=cmm-applications' );
+
+        $subject = "Member conflict on application — {$address}";
+        $message = "A new membership application was received for an address that already has a member on file.\n\n"
+            . "Address:         {$address}\n"
+            . "Existing member: {$existing_user->display_name} ({$existing_user->user_email})\n"
+            . "New applicant:   {$new_user->display_name} ({$new_user->user_email})\n\n"
+            . "Please review and choose to overwrite the existing member or add the applicant as a co-member:\n"
+            . "{$review_url}\n\n"
             . $community;
 
         wp_mail( $admin_email, $subject, $message, [ "From: {$community} <{$admin_email}>" ] );
