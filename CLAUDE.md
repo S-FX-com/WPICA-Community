@@ -42,7 +42,8 @@ inactive / expired
 - `last_name`  — applicant last name
 
 **Payment webhook** (`POST /wp-json/cmm/v1/webhook/payment`):
-- `home_id`    — numeric post ID of the home
+- `address`    — full address text from dropdown (matched to Home post title; used for dues renewals)
+- `home_id`    — numeric post ID of the home (alternative to `address`)
 - `amount`     — payment amount (numeric)
 - `date`       — payment date `YYYY-MM-DD` (defaults to today)
 
