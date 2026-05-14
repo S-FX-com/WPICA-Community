@@ -365,7 +365,8 @@ class CMM_Onboarding {
             'payment',
             $regen_url,
             [
-                'home_id' => 'Hidden field — pass through from the registration form',
+                'address' => 'Address dropdown — the full address text (e.g. "196 Pershing Blvd"). Used for dues renewals where home_id is not available.',
+                'home_id' => 'Hidden field — pass through from the registration form (optional if address is sent)',
                 'amount'  => 'Payment amount (numeric)',
                 'date'    => 'Payment date (YYYY-MM-DD) — defaults to today if omitted',
             ]

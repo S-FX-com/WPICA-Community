@@ -185,12 +185,13 @@ class CMM_Webhooks {
     // -------------------------------------------------------------------------
     // Payment webhook
     //
-    // Expected JSON: { "home_id": 123, "amount": "150.00", "date": "2026-05-01" }
-    //   OR           { "address_code": "WSH4", "amount": "150.00", "date": "2026-05-01" }
+    // Expected JSON: { "address": "196 Pershing Blvd", "amount": "150.00", "date": "2026-05-01" }
+    //   OR (legacy):  { "home_id": 123, ... }  |  { "address_code": "WSH4", ... }
     //
-    // Sets the home to active and records dues. Role sync runs immediately after
-    // via CMM_Roles::sync_roles_on_save() since update_field() alone does not
-    // fire the acf/save_post hook.
+    // The address field is matched against the Homes post title, the same way
+    // the application webhook resolves it. Sets the home to active and records
+    // dues. Role sync runs immediately after via CMM_Roles::sync_roles_on_save()
+    // since update_field() alone does not fire the acf/save_post hook.
     // -------------------------------------------------------------------------
 
     public static function handle_payment( WP_REST_Request $request ): WP_REST_Response {
@@ -201,14 +202,19 @@ class CMM_Webhooks {
         $params  = $request->get_json_params() ?: [];
         $amount  = (float) ( $params['amount'] ?? 0 );
         $date    = sanitize_text_field( $params['date'] ?? date( 'Y-m-d' ) );
+        $address = sanitize_text_field( $params['address'] ?? '' );
         $home_id = (int) ( $params['home_id'] ?? 0 );
 
+        // Resolve home: address text → address_code → home_id (in preference order).
+        if ( ! $home_id && $address ) {
+            $home_id = self::find_home_by_address( $address );
+        }
         if ( ! $home_id && ! empty( $params['address_code'] ) ) {
             $home_id = self::find_home_by_code( sanitize_text_field( $params['address_code'] ) );
         }
 
         if ( ! $home_id ) {
-            return new WP_REST_Response( [ 'error' => 'home_id or address_code is required' ], 400 );
+            return new WP_REST_Response( [ 'error' => 'address, home_id, or address_code is required' ], 400 );
         }
 
         $home = get_post( $home_id );
