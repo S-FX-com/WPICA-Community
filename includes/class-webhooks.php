@@ -273,7 +273,7 @@ class CMM_Webhooks {
             update_option( 'cmm_webhook_secret_' . $type, wp_generate_password( 32, false ) );
         }
 
-        wp_redirect( admin_url( 'admin.php?page=community-membership&cmm_secrets_regenerated=1' ) );
+        wp_redirect( CMM_Settings::tab_url( 'webhooks' ) . '&cmm_secrets_regenerated=1' );
         exit;
     }
 
