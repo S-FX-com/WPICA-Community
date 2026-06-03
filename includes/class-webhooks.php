@@ -142,7 +142,8 @@ class CMM_Webhooks {
         string $first_name,
         string $last_name,
         float  $amount,
-        string $date
+        string $date,
+        array  $member_data = []
     ): array {
         $home = get_post( $home_id );
         if ( ! $home || $home->post_type !== 'cmm_home' ) {
@@ -155,14 +156,20 @@ class CMM_Webhooks {
             : 0;
 
         // Resolve the payer. Prefer the submitted email; fall back to the
-        // existing primary contact for renewal flows where SureForms omits
+        // existing primary contact for renewal flows where the caller omits
         // applicant fields.
         $user = $email ? get_user_by( 'email', $email ) : null;
         if ( ! $user && ! $email && $existing_uid ) {
             $user = get_userdata( $existing_uid );
         }
         if ( ! $user && $email ) {
-            $user_id = wp_create_user( $email, wp_generate_password(), $email );
+            $username = ! empty( $member_data['username'] ) ? sanitize_user( (string) $member_data['username'], true ) : '';
+            $password = ! empty( $member_data['password'] ) ? (string) $member_data['password'] : wp_generate_password();
+            $login    = $username ?: $email;
+            if ( username_exists( $login ) ) {
+                return [ 'error' => "Username '{$login}' is already taken", 'status_code' => 409 ];
+            }
+            $user_id = wp_create_user( $login, $password, $email );
             if ( is_wp_error( $user_id ) ) {
                 return [ 'error' => $user_id->get_error_message(), 'status_code' => 500 ];
             }
@@ -216,6 +223,20 @@ class CMM_Webhooks {
         }
         update_field( 'dues_paid_date',    $date ?: date( 'Y-m-d' ), $home_id );
         update_field( 'membership_status', 'active',                  $home_id );
+
+        // Household-level fields (children, directory listing) only update
+        // when the caller passes them — webhook callers omit them.
+        if ( isset( $member_data['children'] ) ) {
+            update_field( 'children_list', sanitize_textarea_field( (string) $member_data['children'] ), $home_id );
+        }
+        if ( array_key_exists( 'directory_listed', $member_data ) ) {
+            update_field( 'directory_listed', ! empty( $member_data['directory_listed'] ) ? 1 : 0, $home_id );
+        }
+
+        // Contact-level fields (mobile, spouse, off-island address) go on
+        // the primary contact's user meta. Helper only overwrites non-empty
+        // keys so renewal payloads don't clobber existing data with blanks.
+        CMM_Roles::set_member_meta( $user_id, $member_data );
 
         // Clear any legacy conflict postmeta opportunistically.
         delete_post_meta( $home_id, 'cmm_has_member_conflict' );
@@ -300,12 +321,27 @@ class CMM_Webhooks {
         $address     = get_the_title( $home_id );
         $payment_url = get_option( 'cmm_payment_url', home_url( '/membership-payment/' ) );
         $paid_date   = (string) get_field( 'dues_paid_date', $home_id );
+        $login_url   = wp_login_url();
+
+        // One-time password setup URL — useful for accounts created by webhook
+        // without a known password, and as a safety net for any user who wants
+        // to reset. Valid for ~24 hours per WP defaults.
+        $reset_key          = get_password_reset_key( $user );
+        $password_setup_url = is_wp_error( $reset_key )
+            ? wp_lostpassword_url()
+            : network_site_url(
+                'wp-login.php?action=rp&key=' . $reset_key . '&login=' . rawurlencode( $user->user_login ),
+                'login'
+            );
 
         $default_subject = 'Welcome to {community_name} — your membership is active';
         $default_body    = "Hi {first_name},\n\n"
             . "Thank you for your membership at {address}.\n\n"
             . "Payment received: \${amount_paid} on {paid_date}.\n\n"
-            . "Your membership is now active. You can manage your home and household members from your dashboard at any time.\n\n"
+            . "Your membership is now active. Log in any time to manage your home and household members:\n"
+            . "{login_url}\n\n"
+            . "Need to set or reset your password? Use this one-time link (valid for 24 hours):\n"
+            . "{password_setup_url}\n\n"
             . "Questions? Reply to this email or contact {admin_email}.\n\n"
             . "Thank you,\n{community_name}";
 
@@ -313,15 +349,17 @@ class CMM_Webhooks {
         $body_tpl    = get_option( 'cmm_approval_email_body',    $default_body );
 
         $replacements = [
-            '{first_name}'     => $user->first_name,
-            '{last_name}'      => $user->last_name,
-            '{address}'        => $address,
-            '{dues_amount}'    => $dues,
-            '{amount_paid}'    => number_format( $amount_paid, 2 ),
-            '{paid_date}'      => $paid_date,
-            '{payment_url}'    => $payment_url,
-            '{community_name}' => $community,
-            '{admin_email}'    => $admin_email,
+            '{first_name}'         => $user->first_name,
+            '{last_name}'          => $user->last_name,
+            '{address}'            => $address,
+            '{dues_amount}'        => $dues,
+            '{amount_paid}'        => number_format( $amount_paid, 2 ),
+            '{paid_date}'          => $paid_date,
+            '{payment_url}'        => $payment_url,
+            '{login_url}'          => $login_url,
+            '{password_setup_url}' => $password_setup_url,
+            '{community_name}'     => $community,
+            '{admin_email}'        => $admin_email,
         ];
 
         $subject = str_replace( array_keys( $replacements ), array_values( $replacements ), $subject_tpl );

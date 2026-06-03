@@ -255,18 +255,23 @@ class CMM_Onboarding {
             <hr>
             <h3>Welcome / Receipt Email Template</h3>
             <p style="color:#646970;max-width:640px;">
-                This email is sent automatically to members whenever a webhook activates or
-                renews their membership. Use the following placeholders:
+                This email is sent automatically to members whenever activation or renewal
+                completes. Available placeholders:
                 <code>{first_name}</code>, <code>{last_name}</code>, <code>{address}</code>,
                 <code>{amount_paid}</code>, <code>{paid_date}</code>, <code>{dues_amount}</code>,
-                <code>{payment_url}</code>, <code>{community_name}</code>, <code>{admin_email}</code>.
+                <code>{payment_url}</code>, <code>{login_url}</code>,
+                <code>{password_setup_url}</code>, <code>{community_name}</code>,
+                <code>{admin_email}</code>.
             </p>
             <?php
             $default_subject = 'Welcome to {community_name} — your membership is active';
             $default_body    = "Hi {first_name},\n\n"
                 . "Thank you for your membership at {address}.\n\n"
                 . "Payment received: \${amount_paid} on {paid_date}.\n\n"
-                . "Your membership is now active. You can manage your home and household members from your dashboard at any time.\n\n"
+                . "Your membership is now active. Log in any time to manage your home and household members:\n"
+                . "{login_url}\n\n"
+                . "Need to set or reset your password? Use this one-time link (valid for 24 hours):\n"
+                . "{password_setup_url}\n\n"
                 . "Questions? Reply to this email or contact {admin_email}.\n\n"
                 . "Thank you,\n{community_name}";
             $email_subject = get_option( 'cmm_approval_email_subject', $default_subject );
@@ -287,6 +292,71 @@ class CMM_Onboarding {
                         <textarea id="cmm_approval_email_body" name="cmm_approval_email_body"
                                   rows="10" class="large-text"><?php echo esc_textarea( $email_body ); ?></textarea>
                         <p class="description">Plain text. Line breaks are preserved.</p>
+                    </td>
+                </tr>
+            </table>
+
+            <?php
+            // -----------------------------------------------------------------
+            // Payment Confirmation — used by [cmm_membership_form] shortcode
+            // -----------------------------------------------------------------
+            $payment_mode = get_option( 'cmm_payment_mode', 'confirmation' );
+            $default_confirmation = "<h2>Thank you, {first_name}!</h2>\n"
+                . "<p>Your membership at <strong>{address}</strong> is now active.</p>\n"
+                . "<p>To complete your dues payment of <strong>\${amount}</strong>, please use the PayPal button below:</p>\n"
+                . "<!-- Paste your PayPal button HTML here -->\n"
+                . "<p style=\"margin-top:24px;color:#646970;\">A receipt has been emailed to {email}. Questions? Contact us at <a href=\"mailto:{admin_email}\">{admin_email}</a>.</p>";
+            $confirmation_message = get_option( 'cmm_confirmation_message', $default_confirmation );
+            ?>
+            <hr>
+            <h3>Membership Form &amp; Payment Confirmation</h3>
+            <p style="color:#646970;max-width:640px;">
+                The <code>[cmm_membership_form]</code> shortcode renders a native multi-step
+                membership form. After a member submits, they see the confirmation message
+                below (which is where you place your PayPal button or external payment link).
+                Available placeholders:
+                <code>{first_name}</code>, <code>{last_name}</code>, <code>{address}</code>,
+                <code>{amount}</code>, <code>{email}</code>, <code>{community_name}</code>,
+                <code>{admin_email}</code>.
+            </p>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row">Payment Mode</th>
+                    <td>
+                        <label style="display:block;margin-bottom:6px;">
+                            <input type="radio" name="cmm_payment_mode" value="confirmation"
+                                   <?php checked( $payment_mode, 'confirmation' ); ?>>
+                            <strong>Confirmation Message</strong> — show a custom message after
+                            submit (paste your PayPal button HTML below).
+                        </label>
+                        <label style="display:block;color:#646970;">
+                            <input type="radio" name="cmm_payment_mode" value="stripe" disabled>
+                            <strong>Stripe Checkout</strong>
+                            <em style="margin-left:6px;background:#f0f0f1;padding:2px 8px;border-radius:10px;font-size:11px;">
+                                Available in Phase 2
+                            </em>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="cmm_confirmation_message">Confirmation Message</label></th>
+                    <td>
+                        <?php
+                        wp_editor( $confirmation_message, 'cmm_confirmation_message', [
+                            'textarea_name' => 'cmm_confirmation_message',
+                            'textarea_rows' => 12,
+                            'media_buttons' => false,
+                            'teeny'         => false,
+                            'tinymce'       => [
+                                'toolbar1' => 'formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo',
+                            ],
+                            'quicktags'     => true,
+                        ] );
+                        ?>
+                        <p class="description">
+                            Switch to the <strong>Text</strong> tab to paste raw HTML
+                            (PayPal "Buy Now" button code, iframes, etc.).
+                        </p>
                     </td>
                 </tr>
             </table>
@@ -463,6 +533,14 @@ class CMM_Onboarding {
         update_option( 'cmm_approval_email_subject', sanitize_text_field( $_POST['cmm_approval_email_subject'] ?? '' ) );
         update_option( 'cmm_approval_email_body',    sanitize_textarea_field( $_POST['cmm_approval_email_body'] ?? '' ) );
 
+        // Payment mode — only 'confirmation' is selectable today; Stripe is Phase 2.
+        $submitted_mode = sanitize_key( $_POST['cmm_payment_mode'] ?? 'confirmation' );
+        update_option( 'cmm_payment_mode', $submitted_mode === 'stripe' ? 'stripe' : 'confirmation' );
+
+        // Confirmation message — admin-only field, raw HTML allowed via wp_kses_post
+        // plus a custom allowed-list extension for PayPal-style <form> markup.
+        update_option( 'cmm_confirmation_message', wp_unslash( $_POST['cmm_confirmation_message'] ?? '' ) );
+
         // Approved Member Role — only persist a value that exists in wp_roles.
         $submitted_role = sanitize_key( $_POST['cmm_approved_role'] ?? 'home_member' );
         if ( ! array_key_exists( $submitted_role, wp_roles()->get_names() ) ) {
@@ -501,7 +579,10 @@ class CMM_Onboarding {
         $default_body    = "Hi {first_name},\n\n"
             . "Thank you for your membership at {address}.\n\n"
             . "Payment received: \${amount_paid} on {paid_date}.\n\n"
-            . "Your membership is now active. You can manage your home and household members from your dashboard at any time.\n\n"
+            . "Your membership is now active. Log in any time to manage your home and household members:\n"
+            . "{login_url}\n\n"
+            . "Need to set or reset your password? Use this one-time link (valid for 24 hours):\n"
+            . "{password_setup_url}\n\n"
             . "Questions? Reply to this email or contact {admin_email}.\n\n"
             . "Thank you,\n{community_name}";
 
@@ -509,15 +590,17 @@ class CMM_Onboarding {
         $body_tpl    = get_option( 'cmm_approval_email_body',    $default_body );
 
         $replacements = [
-            '{first_name}'     => 'John',
-            '{last_name}'      => 'Doe',
-            '{address}'        => '123 Sample Street',
-            '{amount_paid}'    => $dues,
-            '{paid_date}'      => date( 'Y-m-d' ),
-            '{dues_amount}'    => $dues,
-            '{payment_url}'    => $payment_url,
-            '{community_name}' => $community,
-            '{admin_email}'    => $admin_email,
+            '{first_name}'         => 'John',
+            '{last_name}'          => 'Doe',
+            '{address}'            => '123 Sample Street',
+            '{amount_paid}'        => $dues,
+            '{paid_date}'          => date( 'Y-m-d' ),
+            '{dues_amount}'        => $dues,
+            '{payment_url}'        => $payment_url,
+            '{login_url}'          => wp_login_url(),
+            '{password_setup_url}' => wp_lostpassword_url(),
+            '{community_name}'     => $community,
+            '{admin_email}'        => $admin_email,
         ];
 
         $subject = '[TEST] ' . str_replace( array_keys( $replacements ), array_values( $replacements ), $subject_tpl );
