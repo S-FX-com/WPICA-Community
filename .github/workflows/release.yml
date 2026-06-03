@@ -1,0 +1,107 @@
+name: Release on PR merge
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Read plugin version
+        id: version
+        run: |
+          VERSION=$(grep -E "^[[:space:]]*\*[[:space:]]*Version:" blt-community.php \
+            | head -1 \
+            | sed -E 's/.*Version:[[:space:]]*//' \
+            | tr -d '[:space:]')
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not parse Version from blt-community.php"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"     >> "$GITHUB_OUTPUT"
+          echo "Detected plugin version: $VERSION"
+
+      - name: Check whether tag already exists
+        id: tag_check
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "::notice::Tag $TAG already exists — skipping release."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build plugin zip
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          mkdir -p build/blt-community
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='build' \
+            --exclude='CLAUDE.md' \
+            --exclude='community-membership-plugin.md' \
+            --exclude='*.zip' \
+            ./ build/blt-community/
+          (cd build && zip -rq "blt-community-${{ steps.version.outputs.version }}.zip" blt-community)
+          ls -la build/
+
+      - name: Write release notes
+        if: steps.tag_check.outputs.exists == 'false'
+        env:
+          PR_TITLE:  ${{ github.event.pull_request.title }}
+          PR_BODY:   ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_USER:   ${{ github.event.pull_request.user.login }}
+        run: |
+          {
+            echo "## ${PR_TITLE}"
+            echo
+            if [ -n "${PR_BODY}" ]; then
+              echo "${PR_BODY}"
+              echo
+            fi
+            echo "---"
+            echo "Merged from #${PR_NUMBER} by @${PR_USER}."
+          } > release_notes.md
+          cat release_notes.md
+
+      - name: Create tag
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub release
+        if: steps.tag_check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name:     v${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          files:    build/blt-community-${{ steps.version.outputs.version }}.zip
+          draft:       false
+          prerelease:  false
+          make_latest: 'true'
