@@ -181,6 +181,12 @@ class CMM_Updater {
 
         if ( self::$checker ) {
             self::$checker->resetUpdateState();
+            // PUC stores the most recent manual-check API errors in a
+            // 60-second site transient and shows them on the Plugins screen.
+            // Clear it explicitly so a re-check after fixing the underlying
+            // problem (e.g. flipping the repo from private to public) does
+            // not keep showing the previous 404s.
+            delete_site_transient( self::$checker->getUniqueName( 'manual_check_errors' ) );
             self::$checker->checkForUpdates();
         }
         delete_site_transient( 'update_plugins' );
