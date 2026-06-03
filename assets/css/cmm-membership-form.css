@@ -110,10 +110,16 @@
 .cmm-mf-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 12px 16px;
 }
 .cmm-mf-row .cmm-mf-label { margin-bottom: 0; }
 .cmm-mf-row .cmm-mf-narrow { max-width: 140px; }
+
+/* City / State / Postal Code on a single row. City takes the remaining
+ * space; State is narrow (2-char abbreviation); Postal Code sits between. */
+.cmm-mf-row-csz {
+    grid-template-columns: 2fr 80px 1fr;
+}
 
 /* Address typeahead */
 .cmm-mf-typeahead { position: relative; }
@@ -172,6 +178,11 @@
 .cmm-mf-feedback-new  { background: #f5f3ff; border: 1px solid #c4b5fd; color: #5b21b6; }
 
 .cmm-mf-new-account { margin-top: 6px; }
+/* Themes/page builders that target generic block elements sometimes
+ * override the browser's default [hidden] { display: none } rule. Force
+ * it so the username/password fields actually disappear when the email
+ * matches an existing account. */
+.cmm-mf .cmm-mf-new-account[hidden] { display: none !important; }
 
 /* Username / password feedback — collapse when empty */
 .cmm-mf-username-feedback { margin: -4px 0 8px; font-size: 0.85em; }
