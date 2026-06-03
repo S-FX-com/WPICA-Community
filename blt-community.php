@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Blt Community
  * Description: Home-centric membership management for civic associations and community organizations.
- * Version:     1.8.1
+ * Version:     1.9.0
  * Author:      BLT
  * Text Domain: cmm
  * Requires at least: 6.0
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'CMM_VERSION', '1.8.1' );
+define( 'CMM_VERSION', '1.9.0' );
 define( 'CMM_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'CMM_URL',     plugin_dir_url( __FILE__ ) );
 
@@ -19,6 +19,7 @@ foreach ( [
     'class-cpt',
     'class-acf-fields',
     'class-onboarding',
+    'class-settings',
     'class-address-codes',
     'class-importer',
     'class-roles',
@@ -38,6 +39,7 @@ add_action( 'plugins_loaded', function() {
     CMM_CPT::init();
     CMM_ACF_Fields::init();
     CMM_Onboarding::init();
+    CMM_Settings::init();
     CMM_Address_Codes::init();
     CMM_Importer::init();
     CMM_Roles::init();

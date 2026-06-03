@@ -24,7 +24,6 @@ class CMM_Updater {
     public static function init() {
         self::build_checker();
 
-        add_action( 'admin_menu',                          [ __CLASS__, 'register_menu' ] );
         add_action( 'admin_post_cmm_save_update_settings', [ __CLASS__, 'save_settings' ] );
         add_action( 'admin_post_cmm_check_updates',        [ __CLASS__, 'force_check' ] );
     }
@@ -59,24 +58,14 @@ class CMM_Updater {
     }
 
     // -------------------------------------------------------------------------
-    // Admin page
+    // Settings-tab renderer
+    //
+    // The Updates tab on the Settings page calls this. It emits the section
+    // contents (heading + form) without a wrap container.
     // -------------------------------------------------------------------------
 
-    public static function register_menu() {
-        add_submenu_page(
-            'community-membership',
-            'Plugin Updates',
-            'Updates',
-            'manage_options',
-            'cmm-updates',
-            [ __CLASS__, 'render_page' ]
-        );
-    }
-
-    public static function render_page() {
+    public static function render_settings_section(): void {
         $token       = get_option( 'cmm_github_token', '' );
-        $saved       = isset( $_GET['saved'] );
-        $checked     = isset( $_GET['checked'] );
         $remote_info = self::get_remote_info();
         $repo_url    = sprintf( 'https://github.com/%s/%s/', self::GITHUB_USER, self::GITHUB_REPO );
         $check_url   = wp_nonce_url(
@@ -84,100 +73,81 @@ class CMM_Updater {
             'cmm_check_updates'
         );
         ?>
-        <div class="wrap">
-            <h1>Plugin Updates</h1>
+        <h3 style="margin-top:0;">Automatic Updates</h3>
+        <p>This plugin checks GitHub for new versions and shows updates on the WordPress Plugins screen,
+           just like plugins from WordPress.org. Powered by the
+           <a href="https://github.com/YahnisElsts/plugin-update-checker" target="_blank" rel="noopener">
+               plugin-update-checker
+           </a> library.</p>
 
-            <?php if ( $saved ): ?>
-            <div class="notice notice-success is-dismissible"><p>Update settings saved.</p></div>
-            <?php endif; ?>
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+            <?php wp_nonce_field( 'cmm_save_update_settings' ); ?>
+            <input type="hidden" name="action" value="cmm_save_update_settings">
 
-            <?php if ( $checked ): ?>
-            <div class="notice notice-success is-dismissible">
-                <p>Update check completed.
-                    <a href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>">Open the Plugins screen</a>
-                    to see the result.
-                </p>
-            </div>
-            <?php endif; ?>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row">Installed Version</th>
+                    <td>
+                        <code style="background:#f6f7f7;padding:4px 8px;border-radius:3px;">
+                            <?php echo esc_html( CMM_VERSION ); ?>
+                        </code>
+                        <?php if ( $remote_info && version_compare( $remote_info['version'], CMM_VERSION, '>' ) ): ?>
+                        <span style="margin-left:12px;color:#00a32a;font-weight:600;">
+                            New version available: <?php echo esc_html( $remote_info['version'] ); ?>
+                        </span>
+                        <?php elseif ( $remote_info ): ?>
+                        <span style="margin-left:12px;color:#646970;">
+                            Up to date (remote: <?php echo esc_html( $remote_info['version'] ); ?>)
+                        </span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Update Source</th>
+                    <td>
+                        <code style="background:#f6f7f7;padding:4px 8px;border-radius:3px;user-select:all;">
+                            <?php echo esc_url( $repo_url ); ?>
+                        </code>
+                        <p class="description">
+                            Tracking the &ldquo;<?php echo esc_html( self::GITHUB_BRANCH ); ?>&rdquo; branch.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="cmm_github_token">GitHub Access Token</label></th>
+                    <td>
+                        <input type="password" id="cmm_github_token" name="cmm_github_token"
+                               value="<?php echo esc_attr( $token ); ?>"
+                               class="regular-text" autocomplete="new-password"
+                               placeholder="<?php echo $token ? str_repeat( '•', 20 ) : ''; ?>">
+                        <p class="description">
+                            Optional. Only required if the GitHub repository is private. Use a
+                            fine-grained token with <strong>Contents: Read-only</strong> access to
+                            <code><?php echo esc_html( self::GITHUB_USER . '/' . self::GITHUB_REPO ); ?></code>.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Check for Updates</th>
+                    <td>
+                        <a href="<?php echo esc_url( $check_url ); ?>" class="button">
+                            Check Now
+                        </a>
+                        <a href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>" class="button">
+                            Open Plugins Screen
+                        </a>
+                        <p class="description">
+                            WordPress checks for updates automatically. To check immediately, use the
+                            &ldquo;Check Now&rdquo; button or visit the Plugins screen.
+                        </p>
+                    </td>
+                </tr>
+            </table>
 
-            <div class="card" style="max-width:760px;padding:14px 24px;">
-                <h2 style="margin-top:0;">Automatic Updates</h2>
-                <p>This plugin checks GitHub for new versions and shows updates on the WordPress Plugins screen,
-                   just like plugins from WordPress.org. Powered by the
-                   <a href="https://github.com/YahnisElsts/plugin-update-checker" target="_blank" rel="noopener">
-                       plugin-update-checker
-                   </a> library.</p>
-
-                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-                    <?php wp_nonce_field( 'cmm_save_update_settings' ); ?>
-                    <input type="hidden" name="action" value="cmm_save_update_settings">
-
-                    <table class="form-table" role="presentation">
-                        <tr>
-                            <th scope="row">Installed Version</th>
-                            <td>
-                                <code style="background:#f6f7f7;padding:4px 8px;border-radius:3px;">
-                                    <?php echo esc_html( CMM_VERSION ); ?>
-                                </code>
-                                <?php if ( $remote_info && version_compare( $remote_info['version'], CMM_VERSION, '>' ) ): ?>
-                                <span style="margin-left:12px;color:#00a32a;font-weight:600;">
-                                    New version available: <?php echo esc_html( $remote_info['version'] ); ?>
-                                </span>
-                                <?php elseif ( $remote_info ): ?>
-                                <span style="margin-left:12px;color:#646970;">
-                                    Up to date (remote: <?php echo esc_html( $remote_info['version'] ); ?>)
-                                </span>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Update Source</th>
-                            <td>
-                                <code style="background:#f6f7f7;padding:4px 8px;border-radius:3px;user-select:all;">
-                                    <?php echo esc_url( $repo_url ); ?>
-                                </code>
-                                <p class="description">
-                                    Tracking the &ldquo;<?php echo esc_html( self::GITHUB_BRANCH ); ?>&rdquo; branch.
-                                </p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><label for="cmm_github_token">GitHub Access Token</label></th>
-                            <td>
-                                <input type="password" id="cmm_github_token" name="cmm_github_token"
-                                       value="<?php echo esc_attr( $token ); ?>"
-                                       class="regular-text" autocomplete="new-password"
-                                       placeholder="<?php echo $token ? str_repeat( '•', 20 ) : ''; ?>">
-                                <p class="description">
-                                    Optional. Only required if the GitHub repository is private. Use a
-                                    fine-grained token with <strong>Contents: Read-only</strong> access to
-                                    <code><?php echo esc_html( self::GITHUB_USER . '/' . self::GITHUB_REPO ); ?></code>.
-                                </p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Check for Updates</th>
-                            <td>
-                                <a href="<?php echo esc_url( $check_url ); ?>" class="button">
-                                    Check Now
-                                </a>
-                                <a href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>" class="button">
-                                    Open Plugins Screen
-                                </a>
-                                <p class="description">
-                                    WordPress checks for updates automatically. To check immediately, use the
-                                    &ldquo;Check Now&rdquo; button or visit the Plugins screen.
-                                </p>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <p class="submit">
-                        <button type="submit" class="button button-primary">Save Update Settings</button>
-                    </p>
-                </form>
-            </div>
-        </div>
+            <p class="submit">
+                <button type="submit" class="button button-primary">Save Update Settings</button>
+            </p>
+        </form>
         <?php
     }
 
@@ -201,7 +171,7 @@ class CMM_Updater {
         }
         delete_site_transient( 'update_plugins' );
 
-        wp_redirect( admin_url( 'admin.php?page=cmm-updates&saved=1' ) );
+        wp_redirect( CMM_Settings::tab_url( 'updates' ) . '&saved=1' );
         exit;
     }
 
@@ -216,7 +186,7 @@ class CMM_Updater {
         delete_site_transient( 'update_plugins' );
         wp_update_plugins();
 
-        wp_redirect( admin_url( 'admin.php?page=cmm-updates&checked=1' ) );
+        wp_redirect( CMM_Settings::tab_url( 'updates' ) . '&checked=1' );
         exit;
     }
 
