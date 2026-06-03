@@ -135,6 +135,36 @@ class CMM_Roles {
         delete_user_meta( $user_id, 'cmm_home_address' );
     }
 
+    /**
+     * Write member-level data (mobile, spouse, off-island primary address)
+     * captured by the native membership form. Only writes keys present and
+     * non-empty so renewals don't clobber existing data with blanks.
+     */
+    public static function set_member_meta( int $user_id, array $data ): void {
+        $map = [
+            'mobile'       => 'cmm_mobile_phone',
+            'spouse_first' => 'cmm_spouse_first_name',
+            'spouse_last'  => 'cmm_spouse_last_name',
+        ];
+        foreach ( $map as $key => $meta_key ) {
+            if ( ! empty( $data[ $key ] ) ) {
+                update_user_meta( $user_id, $meta_key, sanitize_text_field( (string) $data[ $key ] ) );
+            }
+        }
+
+        if ( isset( $data['primary_address'] ) && is_array( $data['primary_address'] ) ) {
+            foreach ( [ 'street', 'city', 'state', 'zip' ] as $part ) {
+                if ( ! empty( $data['primary_address'][ $part ] ) ) {
+                    update_user_meta(
+                        $user_id,
+                        'cmm_primary_address_' . $part,
+                        sanitize_text_field( (string) $data['primary_address'][ $part ] )
+                    );
+                }
+            }
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Admin profile display
     // -------------------------------------------------------------------------

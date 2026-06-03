@@ -86,6 +86,24 @@ class CMM_ACF_Fields {
                     'return_format' => 'id',
                 ],
 
+                [
+                    'key'          => 'field_cmm_children_list',
+                    'label'        => 'Children (Names &amp; Ages)',
+                    'name'         => 'children_list',
+                    'type'         => 'textarea',
+                    'rows'         => 3,
+                    'instructions' => 'Free-form list of children at this address. Collected from the membership form.',
+                ],
+
+                [
+                    'key'           => 'field_cmm_directory_listed',
+                    'label'         => 'List in Community Directory',
+                    'name'          => 'directory_listed',
+                    'type'          => 'true_false',
+                    'ui'            => 1,
+                    'default_value' => 0,
+                ],
+
             ],
         ] );
     }
