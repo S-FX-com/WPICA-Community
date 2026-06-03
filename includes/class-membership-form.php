@@ -19,7 +19,7 @@ class CMM_Membership_Form {
     public static function init() {
         add_shortcode( 'cmm_membership_form', [ __CLASS__, 'render_shortcode' ] );
         add_action( 'rest_api_init',          [ __CLASS__, 'register_endpoints' ] );
-        add_action( 'wp_enqueue_scripts',     [ __CLASS__, 'maybe_enqueue_assets' ] );
+        add_action( 'wp_enqueue_scripts',     [ __CLASS__, 'register_assets' ] );
         add_action( 'admin_post_nopriv_cmm_membership_submit', [ __CLASS__, 'handle_submission' ] );
         add_action( 'admin_post_cmm_membership_submit',        [ __CLASS__, 'handle_submission' ] );
     }
@@ -29,6 +29,7 @@ class CMM_Membership_Form {
     // -------------------------------------------------------------------------
 
     public static function render_shortcode( $atts ): string {
+        self::enqueue_assets();
         if ( isset( $_GET['cmm_activated'], $_GET['home_id'] ) ) {
             return self::render_confirmation( (int) $_GET['home_id'] );
         }
@@ -297,21 +298,25 @@ class CMM_Membership_Form {
     }
 
     // -------------------------------------------------------------------------
-    // Asset enqueueing — only on pages with the shortcode
+    // Asset registration + lazy enqueue
+    //
+    // Assets are registered on wp_enqueue_scripts so they're available to the
+    // whole page, then enqueued from inside the shortcode render. This works
+    // regardless of where the shortcode lives — classic post_content, Bricks
+    // elements, Elementor widgets, blocks, or sidebar widgets — because we no
+    // longer rely on has_shortcode() against post_content alone.
     // -------------------------------------------------------------------------
 
-    public static function maybe_enqueue_assets(): void {
+    public static function register_assets(): void {
         if ( is_admin() ) return;
-        global $post;
-        if ( ! $post || ! has_shortcode( $post->post_content, 'cmm_membership_form' ) ) return;
 
-        wp_enqueue_style(
+        wp_register_style(
             'cmm-membership-form',
             CMM_URL . 'assets/css/cmm-membership-form.css',
             [],
             CMM_VERSION
         );
-        wp_enqueue_script(
+        wp_register_script(
             'cmm-membership-form',
             CMM_URL . 'assets/js/cmm-membership-form.js',
             [],
@@ -322,6 +327,14 @@ class CMM_Membership_Form {
             'restRoot'   => esc_url_raw( rest_url( 'cmm/v1/' ) ),
             'duesAmount' => (float) get_option( 'cmm_dues_amount', 0 ),
         ] );
+    }
+
+    private static function enqueue_assets(): void {
+        if ( ! wp_style_is( 'cmm-membership-form', 'registered' ) ) {
+            self::register_assets();
+        }
+        wp_enqueue_style( 'cmm-membership-form' );
+        wp_enqueue_script( 'cmm-membership-form' );
     }
 
     // -------------------------------------------------------------------------
