@@ -1,34 +1,23 @@
 <?php
 /**
- * Gated signup application flow and REST address typeahead endpoint.
+ * Membership Activity admin page + REST address typeahead endpoint.
  *
- * Flow:
- *   Visitor submits SureForms registration → account created (pending_applicant)
- *   Admin reviews → Approve (approved_pending_payment + payment email)
- *                 → Reject  (rejected + decline email)
- *   Payment confirmed → active + home_admin role
+ * The admin page is a read-only audit log grouped by status. Webhooks
+ * activate homes directly — there is no approval/reject UI here. The Reset
+ * action remains so admins can clear a home back to inactive when needed.
  *
- * Conflict flow (existing member at the address):
- *   Webhook flags home with cmm_has_member_conflict postmeta.
- *   Admin sees both existing member and new applicant, then chooses:
- *     Overwrite  — replace existing primary contact with new applicant
- *     Add        — keep existing primary contact, add new applicant to linked_users
- *     Reject New — discard new application, restore home to its prior status
+ * Legacy statuses (pending_review, approved_pending_payment, rejected) still
+ * render so any historical records remain visible. They self-heal to active
+ * on the next webhook call, or admins can Reset them.
  */
 class CMM_Applications {
 
     public static function init() {
-        add_action( 'admin_menu',    [ __CLASS__, 'register_menu' ] );
-        add_action( 'rest_api_init', [ __CLASS__, 'register_endpoints' ] );
+        add_action( 'admin_menu',         [ __CLASS__, 'register_menu' ] );
+        add_action( 'rest_api_init',      [ __CLASS__, 'register_endpoints' ] );
         add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_typeahead' ] );
 
-        add_action( 'admin_post_cmm_approve_application',        [ __CLASS__, 'approve' ] );
-        add_action( 'admin_post_cmm_reject_application',         [ __CLASS__, 'reject' ] );
-        add_action( 'admin_post_cmm_resend_payment_email',       [ __CLASS__, 'resend_payment_email' ] );
-        add_action( 'admin_post_cmm_reset_home',                 [ __CLASS__, 'reset_home' ] );
-        add_action( 'admin_post_cmm_overwrite_conflict',         [ __CLASS__, 'overwrite_conflict' ] );
-        add_action( 'admin_post_cmm_add_conflict',               [ __CLASS__, 'add_conflict' ] );
-        add_action( 'admin_post_cmm_reject_conflict',            [ __CLASS__, 'reject_conflict' ] );
+        add_action( 'admin_post_cmm_reset_home', [ __CLASS__, 'reset_home' ] );
     }
 
     // -------------------------------------------------------------------------
@@ -38,8 +27,8 @@ class CMM_Applications {
     public static function register_menu() {
         add_submenu_page(
             'community-membership',
-            'Applications',
-            'Applications',
+            'Membership Activity',
+            'Membership Activity',
             'manage_options',
             'cmm-applications',
             [ __CLASS__, 'render_page' ]
@@ -50,37 +39,25 @@ class CMM_Applications {
         $action_done = $_GET['cmm_action'] ?? '';
         ?>
         <div class="wrap">
-            <h1>Member Applications</h1>
+            <h1>Membership Activity</h1>
 
-            <?php if ( $action_done === 'approved' ): ?>
-            <div class="notice notice-success inline"><p>Application approved. Payment email sent.</p></div>
-            <?php elseif ( $action_done === 'rejected' ): ?>
-            <div class="notice notice-warning inline"><p>Application rejected. Decline email sent.</p></div>
-            <?php elseif ( $action_done === 'resent' ): ?>
-            <div class="notice notice-info inline"><p>Payment email resent.</p></div>
-            <?php elseif ( $action_done === 'reset' ): ?>
+            <?php if ( $action_done === 'reset' ): ?>
             <div class="notice notice-warning inline"><p>Home reset to inactive.</p></div>
-            <?php elseif ( $action_done === 'conflict_overwritten' ): ?>
-            <div class="notice notice-success inline"><p>Previous member replaced. Payment email sent to new applicant.</p></div>
-            <?php elseif ( $action_done === 'conflict_added' ): ?>
-            <div class="notice notice-success inline"><p>New applicant added as co-member. Payment email sent.</p></div>
-            <?php elseif ( $action_done === 'conflict_rejected' ): ?>
-            <div class="notice notice-warning inline"><p>New application rejected. Address restored to prior status.</p></div>
-            <?php elseif ( $action_done === 'needs_conflict_resolution' ): ?>
-            <div class="notice notice-warning inline"><p>This application has a member conflict — please use the conflict resolution buttons below.</p></div>
             <?php endif; ?>
 
             <?php
-            self::render_section( 'Pending Applications',        'pending_review',           true  );
-            self::render_section( 'Approved — Awaiting Payment', 'approved_pending_payment', false );
-            self::render_section( 'Rejected',                    'rejected',                 false );
-            self::render_section( 'Active Members',              'active',                   false );
+            self::render_section( 'Active Members',                      'active'                   );
+            self::render_section( 'Expired',                             'expired'                  );
+            self::render_section( 'Inactive',                            'inactive'                 );
+            self::render_section( 'Legacy — Pending Review',             'pending_review'           );
+            self::render_section( 'Legacy — Approved, Awaiting Payment', 'approved_pending_payment' );
+            self::render_section( 'Legacy — Rejected',                   'rejected'                 );
             ?>
         </div>
         <?php
     }
 
-    private static function render_section( string $heading, string $status, bool $show_actions ) {
+    private static function render_section( string $heading, string $status ) {
         $homes = get_posts( [
             'post_type'      => 'cmm_home',
             'posts_per_page' => -1,
@@ -104,125 +81,37 @@ class CMM_Applications {
                     <th>Email</th>
                     <th>Address</th>
                     <th>Code</th>
-                    <th>Submitted / Updated</th>
+                    <th>Dues Paid</th>
+                    <th>Updated</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
             <?php foreach ( $homes as $home ):
-                $primary  = (int) get_field( 'primary_contact', $home->ID );
-                $user     = $primary ? get_userdata( $primary ) : null;
-                $code     = get_field( 'address_code', $home->ID );
-                $date     = date( 'M j', strtotime( $home->post_modified ) );
-
-                $has_conflict  = $show_actions && (bool) get_post_meta( $home->ID, 'cmm_has_member_conflict', true );
-                $conflict_uid  = $has_conflict ? (int) get_post_meta( $home->ID, 'cmm_pending_conflict_user_id', true ) : 0;
-                $conflict_user = $conflict_uid ? get_userdata( $conflict_uid ) : null;
-
-                if ( $has_conflict && $conflict_user ):
+                $primary = (int) get_field( 'primary_contact', $home->ID );
+                $user    = $primary ? get_userdata( $primary ) : null;
+                $code    = get_field( 'address_code', $home->ID );
+                $amount  = (float) get_field( 'dues_amount_paid', $home->ID );
+                $paid_on = get_field( 'dues_paid_date', $home->ID );
+                $updated = date( 'M j', strtotime( $home->post_modified ) );
             ?>
-            <tr style="background:#fff8e5;border-left:4px solid #dba617;">
-                <td>
-                    <strong style="color:#dba617;">&#9888; Member Conflict</strong><br>
-                    <small style="color:#646970;">Existing:</small>
-                    <?php echo $user ? esc_html( $user->display_name ) : '<em>none</em>'; ?><br>
-                    <small style="color:#646970;">New applicant:</small>
-                    <?php echo esc_html( $conflict_user->display_name ); ?>
-                </td>
-                <td>
-                    <small style="color:#646970;">Existing:</small>
-                    <?php echo $user ? esc_html( $user->user_email ) : '—'; ?><br>
-                    <small style="color:#646970;">New applicant:</small>
-                    <?php echo esc_html( $conflict_user->user_email ); ?>
-                </td>
-                <td><?php echo esc_html( $home->post_title ); ?></td>
-                <td><code><?php echo esc_html( $code ); ?></code></td>
-                <td><?php echo esc_html( $date ); ?></td>
-                <td>
-                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;vertical-align:top;">
-                        <?php wp_nonce_field( 'cmm_overwrite_conflict_' . $home->ID ); ?>
-                        <input type="hidden" name="action"  value="cmm_overwrite_conflict">
-                        <input type="hidden" name="home_id" value="<?php echo absint( $home->ID ); ?>">
-                        <div style="margin-bottom:4px;">
-                            <label style="font-size:11px;white-space:nowrap;">
-                                <input type="checkbox" name="send_email" value="1" checked>
-                                Send approval email
-                            </label>
-                        </div>
-                        <button type="submit" class="button button-primary button-small"
-                                title="Replace existing member with new applicant">
-                            Overwrite Existing
-                        </button>
-                    </form>
-                    &nbsp;
-                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;vertical-align:top;">
-                        <?php wp_nonce_field( 'cmm_add_conflict_' . $home->ID ); ?>
-                        <input type="hidden" name="action"  value="cmm_add_conflict">
-                        <input type="hidden" name="home_id" value="<?php echo absint( $home->ID ); ?>">
-                        <div style="margin-bottom:4px;">
-                            <label style="font-size:11px;white-space:nowrap;">
-                                <input type="checkbox" name="send_email" value="1" checked>
-                                Send approval email
-                            </label>
-                        </div>
-                        <button type="submit" class="button button-small"
-                                title="Keep existing member and add new applicant as co-member">
-                            Add as Co-Member
-                        </button>
-                    </form>
-                    &nbsp;
-                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
-                        <?php wp_nonce_field( 'cmm_reject_conflict_' . $home->ID ); ?>
-                        <input type="hidden" name="action"  value="cmm_reject_conflict">
-                        <input type="hidden" name="home_id" value="<?php echo absint( $home->ID ); ?>">
-                        <button type="submit" class="button button-small" style="color:#b32d2e;"
-                                title="Reject the new application and restore address to its prior status">
-                            Reject New
-                        </button>
-                    </form>
-                </td>
-            </tr>
-            <?php else: ?>
             <tr>
                 <td><?php echo $user ? esc_html( $user->display_name ) : '—'; ?></td>
                 <td><?php echo $user ? esc_html( $user->user_email ) : '—'; ?></td>
                 <td><?php echo esc_html( $home->post_title ); ?></td>
                 <td><code><?php echo esc_html( $code ); ?></code></td>
-                <td><?php echo esc_html( $date ); ?></td>
                 <td>
-                    <?php if ( $show_actions ): ?>
-                        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;vertical-align:top;">
-                            <?php wp_nonce_field( 'cmm_approve_' . $home->ID ); ?>
-                            <input type="hidden" name="action"  value="cmm_approve_application">
-                            <input type="hidden" name="home_id" value="<?php echo absint( $home->ID ); ?>">
-                            <div style="margin-bottom:4px;">
-                                <label style="font-size:11px;white-space:nowrap;">
-                                    <input type="checkbox" name="send_email" value="1" checked>
-                                    Send approval email
-                                </label>
-                            </div>
-                            <button type="submit" class="button button-primary button-small">Approve</button>
-                        </form>
-                        &nbsp;
-                        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
-                            <?php wp_nonce_field( 'cmm_reject_' . $home->ID ); ?>
-                            <input type="hidden" name="action"  value="cmm_reject_application">
-                            <input type="hidden" name="home_id" value="<?php echo absint( $home->ID ); ?>">
-                            <input type="text"   name="reason"  placeholder="Rejection reason (optional)"
-                                   style="width:180px;">
-                            <button type="submit" class="button button-small">Reject</button>
-                        </form>
-                        &nbsp;
-                    <?php elseif ( $status === 'approved_pending_payment' ): ?>
-                        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
-                            <?php wp_nonce_field( 'cmm_resend_' . $home->ID ); ?>
-                            <input type="hidden" name="action"  value="cmm_resend_payment_email">
-                            <input type="hidden" name="home_id" value="<?php echo absint( $home->ID ); ?>">
-                            <button type="submit" class="button button-small">Resend Payment Email</button>
-                        </form>
-                        &nbsp;
+                    <?php if ( $amount > 0 || $paid_on ): ?>
+                        $<?php echo esc_html( number_format( $amount, 2 ) ); ?>
+                        <?php if ( $paid_on ): ?>
+                            <br><small style="color:#646970;"><?php echo esc_html( $paid_on ); ?></small>
+                        <?php endif; ?>
                     <?php else: ?>
+                        —
                     <?php endif; ?>
+                </td>
+                <td><?php echo esc_html( $updated ); ?></td>
+                <td>
                     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;"
                           onsubmit="return confirm('Reset this home to inactive? This clears all membership and payment data.')">
                         <?php wp_nonce_field( 'cmm_reset_' . $home->ID ); ?>
@@ -232,83 +121,10 @@ class CMM_Applications {
                     </form>
                 </td>
             </tr>
-            <?php endif; ?>
             <?php endforeach; ?>
             </tbody>
         </table>
         <?php
-    }
-
-    // -------------------------------------------------------------------------
-    // Approve
-    // -------------------------------------------------------------------------
-
-    public static function approve() {
-        $home_id = (int) ( $_POST['home_id'] ?? 0 );
-        check_admin_referer( 'cmm_approve_' . $home_id );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
-
-        // Guard: conflict homes must use the dedicated conflict resolution actions.
-        if ( get_post_meta( $home_id, 'cmm_has_member_conflict', true ) ) {
-            wp_redirect( admin_url( 'admin.php?page=cmm-applications&cmm_action=needs_conflict_resolution' ) );
-            exit;
-        }
-
-        update_field( 'membership_status', 'approved_pending_payment', $home_id );
-        CMM_Roles::sync_roles_on_save( $home_id );
-
-        $primary = (int) get_field( 'primary_contact', $home_id );
-        if ( $primary && ! empty( $_POST['send_email'] ) ) {
-            self::send_payment_email( $primary, $home_id );
-        }
-
-        wp_redirect( admin_url( 'admin.php?page=cmm-applications&cmm_action=approved' ) );
-        exit;
-    }
-
-    // -------------------------------------------------------------------------
-    // Reject
-    // -------------------------------------------------------------------------
-
-    public static function reject() {
-        $home_id = (int) ( $_POST['home_id'] ?? 0 );
-        check_admin_referer( 'cmm_reject_' . $home_id );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
-
-        update_field( 'membership_status', 'rejected', $home_id );
-        CMM_Roles::sync_roles_on_save( $home_id );
-
-        $reason  = sanitize_textarea_field( $_POST['reason'] ?? '' );
-        $primary = (int) get_field( 'primary_contact', $home_id );
-        if ( $primary ) {
-            self::send_rejection_email( $primary, $home_id, $reason );
-        }
-
-        // Clear any stale conflict data.
-        delete_post_meta( $home_id, 'cmm_has_member_conflict' );
-        delete_post_meta( $home_id, 'cmm_pending_conflict_user_id' );
-        delete_post_meta( $home_id, 'cmm_conflict_prev_status' );
-
-        wp_redirect( admin_url( 'admin.php?page=cmm-applications&cmm_action=rejected' ) );
-        exit;
-    }
-
-    // -------------------------------------------------------------------------
-    // Resend payment email
-    // -------------------------------------------------------------------------
-
-    public static function resend_payment_email() {
-        $home_id = (int) ( $_POST['home_id'] ?? 0 );
-        check_admin_referer( 'cmm_resend_' . $home_id );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
-
-        $primary = (int) get_field( 'primary_contact', $home_id );
-        if ( $primary ) {
-            self::send_payment_email( $primary, $home_id );
-        }
-
-        wp_redirect( admin_url( 'admin.php?page=cmm-applications&cmm_action=resent' ) );
-        exit;
     }
 
     // -------------------------------------------------------------------------
@@ -320,8 +136,8 @@ class CMM_Applications {
         check_admin_referer( 'cmm_reset_' . $home_id );
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
 
-        // Stash any pending conflict applicant so we can also clean up their
-        // roles/meta — they are not in linked_users yet.
+        // Stash any legacy conflict applicant so we can clean their roles/meta
+        // — they aren't in linked_users yet on legacy conflict records.
         $conflict_uid = (int) get_post_meta( $home_id, 'cmm_pending_conflict_user_id', true );
 
         update_field( 'membership_status', 'inactive', $home_id );
@@ -334,7 +150,6 @@ class CMM_Applications {
         // and strips their plugin-managed roles + clears their meta cleanly.
         CMM_Roles::sync_roles_on_save( $home_id );
 
-        // Conflict applicant lives outside linked_users — clean them up directly.
         if ( $conflict_uid ) {
             $conflict_user = get_userdata( $conflict_uid );
             if ( $conflict_user ) {
@@ -353,172 +168,12 @@ class CMM_Applications {
     }
 
     // -------------------------------------------------------------------------
-    // Conflict resolution — Overwrite existing member with new applicant
-    // -------------------------------------------------------------------------
-
-    public static function overwrite_conflict() {
-        $home_id = (int) ( $_POST['home_id'] ?? 0 );
-        check_admin_referer( 'cmm_overwrite_conflict_' . $home_id );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
-
-        $conflict_uid = (int) get_post_meta( $home_id, 'cmm_pending_conflict_user_id', true );
-        if ( ! $conflict_uid ) {
-            wp_redirect( admin_url( 'admin.php?page=cmm-applications' ) );
-            exit;
-        }
-
-        // Install the new applicant as sole primary contact and approve.
-        // sync_roles_on_save sees the previous primary still has cmm_home_id
-        // meta but is no longer in linked_users, so it strips their managed
-        // roles (including the configured Approved Member Role) and meta.
-        update_field( 'primary_contact',   $conflict_uid,              $home_id );
-        update_field( 'linked_users',      [ $conflict_uid ],          $home_id );
-        update_field( 'membership_status', 'approved_pending_payment', $home_id );
-        CMM_Roles::sync_roles_on_save( $home_id );
-
-        delete_post_meta( $home_id, 'cmm_has_member_conflict' );
-        delete_post_meta( $home_id, 'cmm_pending_conflict_user_id' );
-        delete_post_meta( $home_id, 'cmm_conflict_prev_status' );
-
-        if ( ! empty( $_POST['send_email'] ) ) {
-            self::send_payment_email( $conflict_uid, $home_id );
-        }
-
-        wp_redirect( admin_url( 'admin.php?page=cmm-applications&cmm_action=conflict_overwritten' ) );
-        exit;
-    }
-
-    // -------------------------------------------------------------------------
-    // Conflict resolution — Add new applicant as co-member
-    // -------------------------------------------------------------------------
-
-    public static function add_conflict() {
-        $home_id = (int) ( $_POST['home_id'] ?? 0 );
-        check_admin_referer( 'cmm_add_conflict_' . $home_id );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
-
-        $conflict_uid = (int) get_post_meta( $home_id, 'cmm_pending_conflict_user_id', true );
-        if ( ! $conflict_uid ) {
-            wp_redirect( admin_url( 'admin.php?page=cmm-applications' ) );
-            exit;
-        }
-
-        // Add new applicant to linked_users while keeping the existing primary contact.
-        $existing_linked = get_field( 'linked_users', $home_id ) ?: [];
-        $existing_ids    = array_map( fn( $u ) => is_object( $u ) ? $u->ID : (int) $u, $existing_linked );
-        if ( ! in_array( $conflict_uid, $existing_ids, true ) ) {
-            $existing_ids[] = $conflict_uid;
-        }
-
-        update_field( 'linked_users',      $existing_ids,              $home_id );
-        update_field( 'membership_status', 'approved_pending_payment', $home_id );
-        CMM_Roles::sync_roles_on_save( $home_id );
-
-        delete_post_meta( $home_id, 'cmm_has_member_conflict' );
-        delete_post_meta( $home_id, 'cmm_pending_conflict_user_id' );
-        delete_post_meta( $home_id, 'cmm_conflict_prev_status' );
-
-        if ( ! empty( $_POST['send_email'] ) ) {
-            self::send_payment_email( $conflict_uid, $home_id );
-        }
-
-        wp_redirect( admin_url( 'admin.php?page=cmm-applications&cmm_action=conflict_added' ) );
-        exit;
-    }
-
-    // -------------------------------------------------------------------------
-    // Conflict resolution — Reject the new application
-    // -------------------------------------------------------------------------
-
-    public static function reject_conflict() {
-        $home_id = (int) ( $_POST['home_id'] ?? 0 );
-        check_admin_referer( 'cmm_reject_conflict_' . $home_id );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
-
-        $conflict_uid = (int) get_post_meta( $home_id, 'cmm_pending_conflict_user_id', true );
-
-        // Restore the home to whatever status it had before the conflict application.
-        // sync_roles_on_save finds the conflict applicant via their cmm_home_id
-        // meta, sees they're not in linked_users, and strips their roles + meta.
-        $prev_status = get_post_meta( $home_id, 'cmm_conflict_prev_status', true ) ?: 'inactive';
-        update_field( 'membership_status', $prev_status, $home_id );
-        CMM_Roles::sync_roles_on_save( $home_id );
-
-        if ( $conflict_uid ) {
-            self::send_rejection_email( $conflict_uid, $home_id, '' );
-        }
-
-        delete_post_meta( $home_id, 'cmm_has_member_conflict' );
-        delete_post_meta( $home_id, 'cmm_pending_conflict_user_id' );
-        delete_post_meta( $home_id, 'cmm_conflict_prev_status' );
-
-        wp_redirect( admin_url( 'admin.php?page=cmm-applications&cmm_action=conflict_rejected' ) );
-        exit;
-    }
-
-    // -------------------------------------------------------------------------
-    // Email helpers
-    // -------------------------------------------------------------------------
-
-    private static function send_payment_email( int $user_id, int $home_id ) {
-        $user = get_userdata( $user_id );
-        if ( ! $user ) return;
-
-        $community   = get_option( 'cmm_community_name', 'Community' );
-        $admin_email = get_option( 'cmm_admin_email', get_option( 'admin_email' ) );
-        $dues        = number_format( (float) get_option( 'cmm_dues_amount', 0 ), 2 );
-        $address     = get_the_title( $home_id );
-        $payment_url = get_option( 'cmm_payment_url', home_url( '/membership-payment/' ) );
-
-        $default_subject = 'Your {community_name} membership application is approved!';
-        $default_body    = "Hi {first_name},\n\n"
-            . "Great news! Your application for {address} has been approved.\n\n"
-            . "To activate your membership, please complete your dues payment of \${dues_amount}:\n"
-            . "{payment_url}\n\n"
-            . "Once payment is confirmed, your account will be fully activated.\n\n"
-            . "Questions? Reply to this email or contact {admin_email}.\n\n"
-            . "Thank you,\n{community_name}";
-
-        $subject_tpl = get_option( 'cmm_approval_email_subject', $default_subject );
-        $body_tpl    = get_option( 'cmm_approval_email_body',    $default_body );
-
-        $replacements = [
-            '{first_name}'    => $user->first_name,
-            '{last_name}'     => $user->last_name,
-            '{address}'       => $address,
-            '{dues_amount}'   => $dues,
-            '{payment_url}'   => $payment_url,
-            '{community_name}' => $community,
-            '{admin_email}'   => $admin_email,
-        ];
-
-        $subject = str_replace( array_keys( $replacements ), array_values( $replacements ), $subject_tpl );
-        $body    = str_replace( array_keys( $replacements ), array_values( $replacements ), $body_tpl );
-
-        wp_mail( $user->user_email, $subject, $body, [ "From: {$community} <{$admin_email}>" ] );
-    }
-
-    private static function send_rejection_email( int $user_id, int $home_id, string $reason ) {
-        $user        = get_userdata( $user_id );
-        if ( ! $user ) return;
-
-        $community   = get_option( 'cmm_community_name', 'Community' );
-        $admin_email = get_option( 'cmm_admin_email', get_option( 'admin_email' ) );
-        $address     = get_the_title( $home_id );
-
-        $subject = "Update on your {$community} membership application";
-        $message = "Hi {$user->first_name},\n\n"
-            . "Thank you for applying for membership at {$address}.\n\n"
-            . "After review, we are unable to approve your application at this time.\n"
-            . ( $reason ? "\nReason: {$reason}\n" : '' )
-            . "\nIf you believe this is in error, please contact us at {$admin_email}.\n\n"
-            . "Thank you,\n{$community}";
-
-        wp_mail( $user->user_email, $subject, $message, [ "From: {$community} <{$admin_email}>" ] );
-    }
-
-    // -------------------------------------------------------------------------
     // REST endpoint — address typeahead
+    //
+    // Returns inactive, expired, and active homes so renewals can locate
+    // their existing home. Legacy statuses (pending_review,
+    // approved_pending_payment, rejected) are excluded so the dropdown
+    // doesn't surface stuck records.
     // -------------------------------------------------------------------------
 
     public static function register_endpoints() {
@@ -545,7 +200,7 @@ class CMM_Applications {
             's'              => $search,
             'meta_query'     => [ [
                 'key'     => 'membership_status',
-                'value'   => [ 'inactive', 'expired' ],
+                'value'   => [ 'inactive', 'expired', 'active' ],
                 'compare' => 'IN',
             ] ],
         ] );

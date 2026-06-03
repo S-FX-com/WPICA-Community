@@ -51,10 +51,10 @@ class CMM_Onboarding {
         $next  = self::get_next_expiration();
 
         // Stats for the overview cards
-        $total   = wp_count_posts( 'cmm_home' )->publish ?? 0;
-        $active  = self::count_by_status( 'active' );
-        $expired = self::count_by_status( 'expired' );
-        $pending = self::count_by_status( 'pending_review' );
+        $total    = wp_count_posts( 'cmm_home' )->publish ?? 0;
+        $active   = self::count_by_status( 'active' );
+        $expired  = self::count_by_status( 'expired' );
+        $inactive = self::count_by_status( 'inactive' );
         ?>
         <div class="wrap">
             <h1>&#127968; <?php echo esc_html( $name ?: 'Community' ); ?> — Dashboard</h1>
@@ -72,10 +72,10 @@ class CMM_Onboarding {
             <?php endif; ?>
 
             <div class="cmm-card-row" style="display:flex;gap:16px;flex-wrap:wrap;margin:20px 0;">
-                <?php self::stat_card( 'Total Homes',    $total,   '#2271b1' ); ?>
-                <?php self::stat_card( 'Active Members', $active,  '#00a32a' ); ?>
-                <?php self::stat_card( 'Expired',        $expired, '#d63638' ); ?>
-                <?php self::stat_card( 'Pending Review', $pending, '#dba617' ); ?>
+                <?php self::stat_card( 'Total Homes',    $total,    '#2271b1' ); ?>
+                <?php self::stat_card( 'Active Members', $active,   '#00a32a' ); ?>
+                <?php self::stat_card( 'Expired',        $expired,  '#d63638' ); ?>
+                <?php self::stat_card( 'Inactive',       $inactive, '#dba617' ); ?>
             </div>
 
             <div style="background:#fff;border:1px solid #ddd;border-radius:6px;padding:14px 20px;margin-bottom:24px;max-width:420px;">
@@ -194,7 +194,7 @@ class CMM_Onboarding {
                         <input type="url" id="cmm_payment_url" name="cmm_payment_url"
                                value="<?php echo esc_attr( $payment_url ); ?>"
                                class="large-text">
-                        <p class="description">Full URL of the dues payment page. Used in approval emails as <code>{payment_url}</code>.</p>
+                        <p class="description">Full URL of the dues payment page. Used in the welcome / receipt email as <code>{payment_url}</code>.</p>
                     </td>
                 </tr>
                 <tr>
@@ -253,20 +253,20 @@ class CMM_Onboarding {
             </table>
 
             <hr>
-            <h3>Approval Email Template</h3>
+            <h3>Welcome / Receipt Email Template</h3>
             <p style="color:#646970;max-width:640px;">
-                This email is sent to applicants when their membership application is approved.
-                Use the following placeholders: <code>{first_name}</code>, <code>{last_name}</code>,
-                <code>{address}</code>, <code>{dues_amount}</code>, <code>{payment_url}</code>,
-                <code>{community_name}</code>, <code>{admin_email}</code>.
+                This email is sent automatically to members whenever a webhook activates or
+                renews their membership. Use the following placeholders:
+                <code>{first_name}</code>, <code>{last_name}</code>, <code>{address}</code>,
+                <code>{amount_paid}</code>, <code>{paid_date}</code>, <code>{dues_amount}</code>,
+                <code>{payment_url}</code>, <code>{community_name}</code>, <code>{admin_email}</code>.
             </p>
             <?php
-            $default_subject = 'Your {community_name} membership application is approved!';
+            $default_subject = 'Welcome to {community_name} — your membership is active';
             $default_body    = "Hi {first_name},\n\n"
-                . "Great news! Your application for {address} has been approved.\n\n"
-                . "To activate your membership, please complete your dues payment of \${dues_amount}:\n"
-                . "{payment_url}\n\n"
-                . "Once payment is confirmed, your account will be fully activated.\n\n"
+                . "Thank you for your membership at {address}.\n\n"
+                . "Payment received: \${amount_paid} on {paid_date}.\n\n"
+                . "Your membership is now active. You can manage your home and household members from your dashboard at any time.\n\n"
                 . "Questions? Reply to this email or contact {admin_email}.\n\n"
                 . "Thank you,\n{community_name}";
             $email_subject = get_option( 'cmm_approval_email_subject', $default_subject );
@@ -339,37 +339,40 @@ class CMM_Onboarding {
         <?php endif; ?>
 
         <p style="color:#646970;max-width:640px;">
-            Point SureForms webhooks at these URLs and add the corresponding secret as an
-            <code>Authorization: Bearer &lt;secret&gt;</code> header. Use <strong>POST / JSON</strong>.
+            The two URLs below are <strong>equivalent</strong> — each accepts the same merged
+            payload (applicant + payment fields, all individually optional) and activates the
+            home immediately. There is no admin approval step. Two endpoints exist only because
+            SureForms ties one webhook per form; point your unified membership form at either
+            (or both, with the same fields). Use <strong>POST / JSON</strong> with an
+            <code>Authorization: Bearer &lt;secret&gt;</code> header.
         </p>
 
         <?php
+        $unified_fields = [
+            'address'    => 'Address dropdown — the full address text (e.g. "196 Pershing Blvd"). Matches the Home post title.',
+            'email'      => 'Email Address field. Required for new members; optional for renewals where the existing primary contact pays.',
+            'first_name' => 'First Name field (optional).',
+            'last_name'  => 'Last Name field (optional).',
+            'amount'     => 'Payment amount, numeric (optional but recommended on the payment webhook).',
+            'date'       => 'Payment date YYYY-MM-DD (optional — defaults to today).',
+        ];
+
         self::webhook_row(
-            'Registration Form — Application Webhook',
+            'Membership Webhook — Application URL',
             $app_url,
             $app_secret,
             'application',
             $regen_url,
-            [
-                'address'    => 'Address dropdown — the full address text selected by the applicant (e.g. "196 Pershing Blvd")',
-                'email'      => 'Email Address field',
-                'first_name' => 'First Name field',
-                'last_name'  => 'Last Name field',
-            ]
+            $unified_fields
         );
 
         self::webhook_row(
-            'Payment Form — Payment Confirmation Webhook',
+            'Membership Webhook — Payment URL',
             $pay_url,
             $pay_secret,
             'payment',
             $regen_url,
-            [
-                'address' => 'Address dropdown — the full address text (e.g. "196 Pershing Blvd"). Used for dues renewals where home_id is not available.',
-                'home_id' => 'Hidden field — pass through from the registration form (optional if address is sent)',
-                'amount'  => 'Payment amount (numeric)',
-                'date'    => 'Payment date (YYYY-MM-DD) — defaults to today if omitted',
-            ]
+            $unified_fields
         );
         ?>
         <?php
@@ -494,12 +497,11 @@ class CMM_Onboarding {
         $dues        = number_format( (float) get_option( 'cmm_dues_amount', 0 ), 2 );
         $payment_url = get_option( 'cmm_payment_url', home_url( '/membership-payment/' ) );
 
-        $default_subject = 'Your {community_name} membership application is approved!';
+        $default_subject = 'Welcome to {community_name} — your membership is active';
         $default_body    = "Hi {first_name},\n\n"
-            . "Great news! Your application for {address} has been approved.\n\n"
-            . "To activate your membership, please complete your dues payment of \${dues_amount}:\n"
-            . "{payment_url}\n\n"
-            . "Once payment is confirmed, your account will be fully activated.\n\n"
+            . "Thank you for your membership at {address}.\n\n"
+            . "Payment received: \${amount_paid} on {paid_date}.\n\n"
+            . "Your membership is now active. You can manage your home and household members from your dashboard at any time.\n\n"
             . "Questions? Reply to this email or contact {admin_email}.\n\n"
             . "Thank you,\n{community_name}";
 
@@ -510,6 +512,8 @@ class CMM_Onboarding {
             '{first_name}'     => 'John',
             '{last_name}'      => 'Doe',
             '{address}'        => '123 Sample Street',
+            '{amount_paid}'    => $dues,
+            '{paid_date}'      => date( 'Y-m-d' ),
             '{dues_amount}'    => $dues,
             '{payment_url}'    => $payment_url,
             '{community_name}' => $community,
