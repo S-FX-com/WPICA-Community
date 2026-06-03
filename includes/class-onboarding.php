@@ -319,6 +319,7 @@ class CMM_Onboarding {
                 <code>{amount}</code>, <code>{email}</code>, <code>{community_name}</code>,
                 <code>{admin_email}</code>.
             </p>
+            <?php $stripe_configured = CMM_Stripe::is_configured(); ?>
             <table class="form-table" role="presentation">
                 <tr>
                     <th scope="row">Payment Mode</th>
@@ -329,12 +330,22 @@ class CMM_Onboarding {
                             <strong>Confirmation Message</strong> — show a custom message after
                             submit (paste your PayPal button HTML below).
                         </label>
-                        <label style="display:block;color:#646970;">
-                            <input type="radio" name="cmm_payment_mode" value="stripe" disabled>
-                            <strong>Stripe Checkout</strong>
+                        <label style="display:block;<?php echo $stripe_configured ? '' : 'color:#646970;'; ?>">
+                            <input type="radio" name="cmm_payment_mode" value="stripe"
+                                   <?php checked( $payment_mode, 'stripe' ); ?>
+                                   <?php disabled( ! $stripe_configured ); ?>>
+                            <strong>Stripe Checkout</strong> — redirect the member to Stripe's
+                            hosted checkout. The home only activates after Stripe confirms
+                            payment via webhook.
+                            <?php if ( ! $stripe_configured ): ?>
                             <em style="margin-left:6px;background:#f0f0f1;padding:2px 8px;border-radius:10px;font-size:11px;">
-                                Available in Phase 2
+                                Fill in Stripe credentials below to enable
                             </em>
+                            <?php elseif ( CMM_Stripe::is_test_mode() ): ?>
+                            <em style="margin-left:6px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:11px;">
+                                Test mode (sk_test_… key)
+                            </em>
+                            <?php endif; ?>
                         </label>
                     </td>
                 </tr>
@@ -355,7 +366,70 @@ class CMM_Onboarding {
                         ?>
                         <p class="description">
                             Switch to the <strong>Text</strong> tab to paste raw HTML
-                            (PayPal "Buy Now" button code, iframes, etc.).
+                            (PayPal "Buy Now" button code, iframes, etc.). Only used in
+                            <strong>Confirmation Message</strong> mode.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+
+            <?php
+            // -----------------------------------------------------------------
+            // Stripe Checkout credentials (used when Payment Mode = Stripe)
+            // -----------------------------------------------------------------
+            $stripe_pk     = (string) get_option( 'cmm_stripe_publishable_key', '' );
+            $stripe_sk     = (string) get_option( 'cmm_stripe_secret_key',      '' );
+            $stripe_wh     = (string) get_option( 'cmm_stripe_webhook_secret',  '' );
+            $stripe_wh_url = CMM_Stripe::get_webhook_url();
+            ?>
+            <hr>
+            <h3>Stripe Checkout Credentials</h3>
+            <p style="color:#646970;max-width:640px;">
+                Required only if you've selected <strong>Stripe Checkout</strong> above. Use
+                <code>sk_test_…</code> / <code>pk_test_…</code> keys for staging; <code>sk_live_…</code>
+                / <code>pk_live_…</code> for production. Stored values are masked on reload —
+                leave a field blank to keep the existing value.
+            </p>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="cmm_stripe_publishable_key">Publishable Key</label></th>
+                    <td>
+                        <input type="text" id="cmm_stripe_publishable_key" name="cmm_stripe_publishable_key"
+                               value="<?php echo esc_attr( self::mask_credential( $stripe_pk, 8 ) ); ?>"
+                               class="large-text" placeholder="pk_test_… or pk_live_…">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="cmm_stripe_secret_key">Secret Key</label></th>
+                    <td>
+                        <input type="password" id="cmm_stripe_secret_key" name="cmm_stripe_secret_key"
+                               value="<?php echo esc_attr( self::mask_credential( $stripe_sk, 4 ) ); ?>"
+                               class="large-text" placeholder="sk_test_… or sk_live_…"
+                               autocomplete="off">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="cmm_stripe_webhook_secret">Webhook Signing Secret</label></th>
+                    <td>
+                        <input type="password" id="cmm_stripe_webhook_secret" name="cmm_stripe_webhook_secret"
+                               value="<?php echo esc_attr( self::mask_credential( $stripe_wh, 4 ) ); ?>"
+                               class="large-text" placeholder="whsec_…"
+                               autocomplete="off">
+                        <p class="description">
+                            From Stripe Dashboard → Developers → Webhooks → your endpoint.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Webhook URL</th>
+                    <td>
+                        <code style="background:#f6f7f7;padding:4px 8px;border-radius:3px;user-select:all;word-break:break-all;display:inline-block;">
+                            <?php echo esc_html( $stripe_wh_url ); ?>
+                        </code>
+                        <p class="description">
+                            In Stripe Dashboard → Developers → Webhooks, add an endpoint
+                            pointing at this URL and subscribe it to the
+                            <code>checkout.session.completed</code> event.
                         </p>
                     </td>
                 </tr>
@@ -533,13 +607,19 @@ class CMM_Onboarding {
         update_option( 'cmm_approval_email_subject', sanitize_text_field( $_POST['cmm_approval_email_subject'] ?? '' ) );
         update_option( 'cmm_approval_email_body',    sanitize_textarea_field( $_POST['cmm_approval_email_body'] ?? '' ) );
 
-        // Payment mode — only 'confirmation' is selectable today; Stripe is Phase 2.
+        // Payment mode — 'confirmation' (PayPal button HTML) or 'stripe' (Checkout).
         $submitted_mode = sanitize_key( $_POST['cmm_payment_mode'] ?? 'confirmation' );
         update_option( 'cmm_payment_mode', $submitted_mode === 'stripe' ? 'stripe' : 'confirmation' );
 
         // Confirmation message — admin-only field, raw HTML allowed via wp_kses_post
         // plus a custom allowed-list extension for PayPal-style <form> markup.
         update_option( 'cmm_confirmation_message', wp_unslash( $_POST['cmm_confirmation_message'] ?? '' ) );
+
+        // Stripe credentials — leave existing value in place if the submitted
+        // field is empty or still masked (so admins can save without re-typing).
+        self::maybe_update_credential( 'cmm_stripe_publishable_key', $_POST['cmm_stripe_publishable_key'] ?? '' );
+        self::maybe_update_credential( 'cmm_stripe_secret_key',      $_POST['cmm_stripe_secret_key']      ?? '' );
+        self::maybe_update_credential( 'cmm_stripe_webhook_secret',  $_POST['cmm_stripe_webhook_secret']  ?? '' );
 
         // Approved Member Role — only persist a value that exists in wp_roles.
         $submitted_role = sanitize_key( $_POST['cmm_approved_role'] ?? 'home_member' );
@@ -554,6 +634,27 @@ class CMM_Onboarding {
 
         wp_redirect( admin_url( 'admin.php?page=community-membership&saved=1' ) );
         exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // Stripe credential masking helpers
+    //
+    // Stored credentials are displayed as bullets followed by the last few
+    // characters so admins can confirm which key is in place without exposing
+    // the secret. On save, a still-masked value is treated as "no change".
+    // -------------------------------------------------------------------------
+
+    private static function mask_credential( string $value, int $tail = 4 ): string {
+        if ( $value === '' ) return '';
+        $tail = max( 2, min( $tail, max( 2, strlen( $value ) - 4 ) ) );
+        return str_repeat( '•', 8 ) . substr( $value, -$tail );
+    }
+
+    private static function maybe_update_credential( string $option_key, string $submitted ): void {
+        $submitted = trim( wp_unslash( (string) $submitted ) );
+        if ( $submitted === '' )                       return; // empty input → keep existing
+        if ( str_starts_with( $submitted, '••••••••' ) ) return; // unchanged mask → keep existing
+        update_option( $option_key, sanitize_text_field( $submitted ) );
     }
 
     // -------------------------------------------------------------------------

@@ -19,6 +19,10 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     <div class="cmm-mf-server-error"><?php echo esc_html( $error ); ?></div>
     <?php endif; ?>
 
+    <?php if ( ! empty( $notice ) ): ?>
+    <div class="cmm-mf-server-notice"><?php echo esc_html( $notice ); ?></div>
+    <?php endif; ?>
+
     <ol class="cmm-mf-steps" aria-label="Progress">
         <li data-step="1" class="active"><span>1</span> Address</li>
         <li data-step="2"><span>2</span> Account</li>

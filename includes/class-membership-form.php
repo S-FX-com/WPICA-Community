@@ -32,6 +32,9 @@ class CMM_Membership_Form {
         if ( isset( $_GET['cmm_activated'], $_GET['home_id'] ) ) {
             return self::render_confirmation( (int) $_GET['home_id'] );
         }
+        if ( isset( $_GET['cmm_stripe_return'], $_GET['token'] ) ) {
+            return self::render_stripe_return( sanitize_text_field( wp_unslash( $_GET['token'] ) ) );
+        }
         return self::render_form();
     }
 
@@ -40,9 +43,43 @@ class CMM_Membership_Form {
         $submit_url  = admin_url( 'admin-post.php' );
         $nonce       = wp_create_nonce( 'cmm_membership_submit' );
         $error       = isset( $_GET['cmm_error'] ) ? sanitize_text_field( wp_unslash( $_GET['cmm_error'] ) ) : '';
+        $notice      = isset( $_GET['cmm_stripe_cancel'] )
+            ? 'Your payment was cancelled. Your membership has not been activated — submit again when you\'re ready.'
+            : '';
 
         ob_start();
         include CMM_PATH . 'templates/membership-form.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Render the post-Stripe-Checkout return page. Either the webhook has
+     * already activated (show confirmation) or it hasn't yet (show a brief
+     * processing page that auto-refreshes).
+     */
+    private static function render_stripe_return( string $token ): string {
+        $home_id = CMM_Stripe::fetch_activated( $token );
+        if ( $home_id ) {
+            return self::render_confirmation( $home_id );
+        }
+
+        $still_pending = CMM_Stripe::fetch_pending( $token ) !== null;
+        $admin_email   = get_option( 'cmm_admin_email', get_option( 'admin_email' ) );
+
+        ob_start();
+        if ( $still_pending ): ?>
+            <div class="cmm-mf-confirmation">
+                <meta http-equiv="refresh" content="3">
+                <h2>Processing your payment…</h2>
+                <p>We're waiting for Stripe to confirm your payment. This page will refresh automatically in a few seconds.</p>
+                <p class="cmm-mf-hint">If this page doesn't update within a minute, contact <a href="mailto:<?php echo esc_attr( $admin_email ); ?>"><?php echo esc_html( $admin_email ); ?></a> with the email address you used.</p>
+            </div>
+        <?php else: ?>
+            <div class="cmm-mf-confirmation">
+                <h2>We can't find your activation record</h2>
+                <p>If you completed payment, your membership has been activated and a welcome email is on its way. If you don't receive one within a few minutes, please contact <a href="mailto:<?php echo esc_attr( $admin_email ); ?>"><?php echo esc_html( $admin_email ); ?></a>.</p>
+            </div>
+        <?php endif;
         return ob_get_clean();
     }
 
@@ -137,6 +174,43 @@ class CMM_Membership_Form {
 
         $dues_amount = (float) get_option( 'cmm_dues_amount', 0 );
 
+        // Stripe Checkout branch — defer activation until Stripe confirms
+        // payment via the /webhook/stripe endpoint. The pending submission
+        // is cached against a UUID token threaded through session metadata
+        // so the webhook handler can recover it.
+        if ( get_option( 'cmm_payment_mode', 'confirmation' ) === 'stripe' && CMM_Stripe::is_configured() ) {
+            $token = CMM_Stripe::store_pending( [
+                'home_id'     => $home_id,
+                'email'       => $email,
+                'first_name'  => $first_name,
+                'last_name'   => $last_name,
+                'amount'      => $dues_amount,
+                'date'        => date( 'Y-m-d' ),
+                'member_data' => $member_data,
+            ] );
+
+            $session = CMM_Stripe::create_checkout_session( [
+                'token'      => $token,
+                'home_id'    => $home_id,
+                'email'      => $email,
+                'amount'     => $dues_amount,
+                'address'    => get_the_title( $home_id ),
+                'first_name' => $first_name,
+                'last_name'  => $last_name,
+                'origin_url' => $return_url,
+            ] );
+
+            if ( isset( $session['error'] ) ) {
+                CMM_Stripe::clear_pending( $token );
+                self::redirect_with_error( $return_url, 'Payment setup failed: ' . $session['error'] );
+            }
+
+            wp_redirect( $session['url'] );
+            exit;
+        }
+
+        // Confirmation Message branch — activate immediately, render the
+        // admin-configured confirmation page (containing the PayPal button).
         $result = CMM_Webhooks::process_membership_activation(
             $home_id,
             $email,
