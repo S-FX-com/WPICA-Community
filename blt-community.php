@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Blt Community
  * Description: Home-centric membership management for civic associations and community organizations.
- * Version:     1.9.2
+ * Version:     1.9.3
  * Author:      S-FX.com Small Business Solutions
  * Author URI:  https://www.s-fx.com
  * Text Domain: cmm
@@ -12,7 +12,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'CMM_VERSION', '1.9.2' );
+define( 'CMM_VERSION', '1.9.3' );
 define( 'CMM_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'CMM_URL',     plugin_dir_url( __FILE__ ) );
 
