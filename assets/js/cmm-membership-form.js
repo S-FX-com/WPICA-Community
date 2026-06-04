@@ -12,9 +12,10 @@
     var form = document.querySelector('.cmm-mf');
     if (!form) return;
 
-    var cfg   = window.cmmForm || {};
-    var REST  = (cfg.restRoot || '/wp-json/cmm/v1/').replace(/\/?$/, '/');
-    var dues  = Number(cfg.duesAmount || 0);
+    var cfg     = window.cmmForm || {};
+    var REST    = (cfg.restRoot || '/wp-json/cmm/v1/').replace(/\/?$/, '/');
+    var dues    = Number(cfg.duesAmount || 0);
+    var notices = cfg.notices || {};
 
     var panels    = form.querySelectorAll('.cmm-mf-panel');
     var stepItems = form.querySelectorAll('.cmm-mf-steps li');
@@ -206,20 +207,35 @@
 
     function applyAccountCheck(d) {
         if (d && d.exists) {
+            var existingTpl = notices.existingAccount || '';
+            var message     = existingTpl.replace(
+                '{display_name}',
+                escapeHtml(d.display_name || '')
+            );
             accountFeed.innerHTML =
-                '<div class="cmm-mf-feedback cmm-mf-feedback-info">' +
-                'We found your account (<strong>' + escapeHtml(d.display_name || '') + '</strong>). ' +
-                'We\'ll add this membership to it. The welcome email includes a password-reset link if needed.' +
-                '</div>';
+                '<div class="cmm-mf-feedback cmm-mf-feedback-info">' + message + '</div>';
             newAccount.hidden = true;
+            clearNewAccountInputs();
         } else {
+            var newTpl = notices.newAccount || '';
             accountFeed.innerHTML =
-                '<div class="cmm-mf-feedback cmm-mf-feedback-new">' +
-                'No account yet — we\'ll create one when you submit.' +
-                '</div>';
+                '<div class="cmm-mf-feedback cmm-mf-feedback-new">' + newTpl + '</div>';
             newAccount.hidden = false;
             maybeSuggestUsername();
         }
+    }
+
+    function clearNewAccountInputs() {
+        // When we're going to attach to an existing account, drop any username
+        // or password the visitor may have typed before we knew the email
+        // matched — otherwise the form submission would still send credentials
+        // the server doesn't need.
+        if (usernameInput) usernameInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        var ufeed = form.querySelector('.cmm-mf-username-feedback');
+        if (ufeed) ufeed.innerHTML = '';
+        var meter = form.querySelector('.cmm-mf-password-meter');
+        if (meter) meter.innerHTML = '';
     }
 
     function maybeSuggestUsername() {

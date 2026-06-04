@@ -153,16 +153,16 @@ if ( ! defined( 'ABSPATH' ) ) exit;
             <input type="text" name="primary_street" autocomplete="address-line1">
         </label>
 
-        <div class="cmm-mf-row">
+        <div class="cmm-mf-row cmm-mf-row-csz">
             <label class="cmm-mf-label">
                 City
                 <input type="text" name="primary_city" autocomplete="address-level2">
             </label>
-            <label class="cmm-mf-label cmm-mf-narrow">
+            <label class="cmm-mf-label">
                 State
                 <input type="text" name="primary_state" autocomplete="address-level1" maxlength="2">
             </label>
-            <label class="cmm-mf-label cmm-mf-narrow">
+            <label class="cmm-mf-label">
                 Postal Code
                 <input type="text" name="primary_zip" autocomplete="postal-code" maxlength="10">
             </label>

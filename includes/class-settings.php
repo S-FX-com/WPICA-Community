@@ -371,6 +371,11 @@ class CMM_Settings {
             . "<!-- Paste your PayPal button HTML here -->\n"
             . "<p style=\"margin-top:24px;color:#646970;\">A receipt has been emailed to {email}. Questions? Contact us at <a href=\"mailto:{admin_email}\">{admin_email}</a>.</p>";
         $confirmation_message = get_option( 'cmm_confirmation_message', $default_confirmation );
+
+        $default_notice_existing = "We found your account (<strong>{display_name}</strong>). We'll add this membership to it. The welcome email includes a password-reset link if needed.";
+        $default_notice_new      = "No account yet &mdash; we'll create one when you submit.";
+        $notice_existing = get_option( 'cmm_form_notice_existing_account', $default_notice_existing );
+        $notice_new      = get_option( 'cmm_form_notice_new_account',      $default_notice_new );
         ?>
         <h3 style="margin-top:0;">Membership Form &amp; Payment Confirmation</h3>
         <p style="color:#646970;max-width:640px;">
@@ -419,6 +424,37 @@ class CMM_Settings {
                     <p class="description">
                         Switch to the <strong>Text</strong> tab to paste raw HTML
                         (PayPal "Buy Now" button code, iframes, etc.).
+                    </p>
+                </td>
+            </tr>
+        </table>
+
+        <h3>Inline Notices on the Account Step</h3>
+        <p style="color:#646970;max-width:640px;">
+            Shown on Step&nbsp;2 of the signup form once the applicant types an email address.
+            Basic inline HTML is allowed (<code>&lt;strong&gt;</code>, <code>&lt;em&gt;</code>,
+            <code>&lt;a&gt;</code>).
+        </p>
+        <table class="form-table" role="presentation">
+            <tr>
+                <th scope="row"><label for="cmm_form_notice_existing_account">Existing Account</label></th>
+                <td>
+                    <textarea id="cmm_form_notice_existing_account" name="cmm_form_notice_existing_account"
+                              rows="3" class="large-text"><?php echo esc_textarea( $notice_existing ); ?></textarea>
+                    <p class="description">
+                        Shown when the email matches an existing WordPress user. Placeholder:
+                        <code>{display_name}</code>.
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="cmm_form_notice_new_account">New Account</label></th>
+                <td>
+                    <textarea id="cmm_form_notice_new_account" name="cmm_form_notice_new_account"
+                              rows="3" class="large-text"><?php echo esc_textarea( $notice_new ); ?></textarea>
+                    <p class="description">
+                        Shown when no existing user is found. The username + password fields
+                        appear below this notice.
                     </p>
                 </td>
             </tr>
@@ -679,6 +715,24 @@ class CMM_Settings {
 
         // Raw HTML allowed — admin-only field; rendering uses kses_confirmation().
         update_option( 'cmm_confirmation_message', wp_unslash( $_POST['cmm_confirmation_message'] ?? '' ) );
+
+        // Inline form notices — limited HTML so admins can bold/link text.
+        $notice_allowed = [
+            'strong' => [],
+            'em'     => [],
+            'b'      => [],
+            'i'      => [],
+            'br'     => [],
+            'a'      => [ 'href' => true, 'target' => true, 'rel' => true ],
+        ];
+        update_option(
+            'cmm_form_notice_existing_account',
+            wp_kses( wp_unslash( $_POST['cmm_form_notice_existing_account'] ?? '' ), $notice_allowed )
+        );
+        update_option(
+            'cmm_form_notice_new_account',
+            wp_kses( wp_unslash( $_POST['cmm_form_notice_new_account'] ?? '' ), $notice_allowed )
+        );
     }
 
     // -------------------------------------------------------------------------

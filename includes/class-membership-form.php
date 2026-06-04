@@ -323,9 +323,16 @@ class CMM_Membership_Form {
             CMM_VERSION,
             true
         );
+        $default_notice_existing = "We found your account (<strong>{display_name}</strong>). We'll add this membership to it. The welcome email includes a password-reset link if needed.";
+        $default_notice_new      = "No account yet &mdash; we'll create one when you submit.";
+
         wp_localize_script( 'cmm-membership-form', 'cmmForm', [
             'restRoot'   => esc_url_raw( rest_url( 'cmm/v1/' ) ),
             'duesAmount' => (float) get_option( 'cmm_dues_amount', 0 ),
+            'notices'    => [
+                'existingAccount' => (string) get_option( 'cmm_form_notice_existing_account', $default_notice_existing ),
+                'newAccount'      => (string) get_option( 'cmm_form_notice_new_account',      $default_notice_new ),
+            ],
         ] );
     }
 
