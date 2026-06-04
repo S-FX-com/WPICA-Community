@@ -1,63 +1,60 @@
 /**
  * Blt Community — Native membership form.
  *
- * Layout strategy:
- *   The form, each step panel, and the new-account block are all
- *   `display: flex; flex-direction: column; gap: var(--cmm-mf-gap)`.
- *   That puts ALL vertical spacing on the parent's `gap` property,
- *   which we control. Child margins are zeroed with `!important`, so
- *   theme rules like `.entry-content > * + * { margin: 2em !important }`
- *   cannot inflate the gaps from below.
+ * Polished design adapted to our class naming. Layout strategy:
  *
- *   For horizontal layouts (paired fields, actions row), we use
- *   `display: grid` or `display: flex` with explicit `gap`.
+ *   - .cmm-mf is a flex column. Spacing between stepper and the visible
+ *     panel is owned by the parent's gap.
+ *   - .cmm-mf-panel is a flex column. Vertical spacing between every
+ *     direct child (heading, row, section, actions) is owned by gap.
+ *   - .cmm-mf-section is a flex column with its own gap so the fields
+ *     under a section heading share a single rhythm.
  *
- * Selectors are prefixed `.cmm-mf-` and the surface (colors, radius,
- * gaps, font) is exposed as CSS custom properties on `.cmm-mf`. Admins
- * re-skin via Settings -> Membership Form -> Custom CSS without
- * touching layout.
+ * Putting spacing on the parent's gap (instead of children's margins)
+ * means theme rules that target child margins cannot inflate it.
+ *
+ * Surface details — colors, radius, typography scale — are exposed as
+ * CSS custom properties on .cmm-mf so admins can re-skin via Settings
+ * -> Membership Form -> Custom CSS without touching layout.
  */
 
 /* =============================================================================
- * Brand surface — override via Custom CSS
+ * Brand surface
  * ========================================================================== */
 .cmm-mf {
-    --cmm-mf-accent:       #1d4ed8;
-    --cmm-mf-accent-hover: #1e40af;
-    --cmm-mf-accent-soft:  rgba(37, 99, 235, 0.15);
+    --cmm-mf-primary:      #1f5bd8;
+    --cmm-mf-primary-dark: #174bc0;
+    --cmm-mf-primary-soft: rgba(31, 91, 216, 0.12);
 
-    --cmm-mf-text:         #1f2937;
-    --cmm-mf-label:        #374151;
+    --cmm-mf-text:         #111827;
+    --cmm-mf-label:        #1f2937;
     --cmm-mf-muted:        #6b7280;
     --cmm-mf-required:     #dc2626;
 
     --cmm-mf-bg:           #ffffff;
-    --cmm-mf-bg-soft:      #f9fafb;
-    --cmm-mf-border:       #d1d5db;
-    --cmm-mf-border-soft:  #e5e7eb;
+    --cmm-mf-bg-soft:      #f7f9fc;
+    --cmm-mf-border:       #d8dee8;
+    --cmm-mf-border-soft:  #e8edf5;
 
-    --cmm-mf-radius:       8px;
-    --cmm-mf-radius-input: 6px;
+    --cmm-mf-radius:       14px;
+    --cmm-mf-radius-input: 8px;
 
-    /* The single source of vertical rhythm.
-     * Inter-field gap inside each panel. */
-    --cmm-mf-gap:          10px;
-
-    /* Spacing between the stepper and the panels. */
-    --cmm-mf-frame-gap:    14px;
+    --cmm-mf-gap:          16px;
+    --cmm-mf-section-gap:  24px;
+    --cmm-mf-frame-gap:    24px;
 
     --cmm-mf-font:         inherit;
 }
 
 /* =============================================================================
- * Form container — flex column. Spacing between stepper + panels lives here.
+ * Form container — flex column
  * ========================================================================== */
 .cmm-mf {
     display: flex !important;
     flex-direction: column !important;
     gap: var(--cmm-mf-frame-gap) !important;
 
-    max-width: 720px !important;
+    max-width: 980px !important;
     margin: 0 auto !important;
     padding: 0 !important;
     border: 0 !important;
@@ -68,141 +65,254 @@
     color: var(--cmm-mf-text) !important;
     text-align: left !important;
 }
-
-/* Hidden inputs and any other zero-size children should not contribute gap. */
 .cmm-mf > input[type="hidden"] { display: none !important; }
-
-/* Every direct child of the form has no margin — gap owns the spacing. */
 .cmm-mf > * { margin: 0 !important; }
 
 /* =============================================================================
- * Scoped reset — defeats theme/page-builder overrides on type + alignment
+ * Scoped reset
  * ========================================================================== */
 .cmm-mf,
 .cmm-mf * { box-sizing: border-box; }
 
 .cmm-mf :is(h2, h3, p, label, dt, dd, .cmm-mf-hint) {
-    text-align: left !important;
-}
-
-.cmm-mf :is(h2, h3) {
     font-family: inherit !important;
     font-variant: normal !important;
     text-transform: none !important;
-    letter-spacing: 0 !important;
-    line-height: 1.3 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-.cmm-mf h2 {
-    font-size: 1.3em !important;
-    font-weight: 700 !important;
-    color: var(--cmm-mf-text) !important;
-}
-.cmm-mf h3 {
-    font-size: 1.05em !important;
-    font-weight: 600 !important;
-    color: var(--cmm-mf-label) !important;
-}
-.cmm-mf h3 small {
-    font-weight: 400 !important;
-    font-size: 0.85em !important;
-    color: var(--cmm-mf-muted) !important;
-    margin-left: 4px !important;
-}
-
-.cmm-mf p {
-    margin: 0 !important;
-    padding: 0 !important;
+    letter-spacing: normal !important;
 }
 
 /* =============================================================================
- * Stepper
+ * Stepper — circles, connector line, progress fill, checkmark on done
+ *
+ * Progress is driven by --cmm-mf-progress (0..1) set inline by the JS.
  * ========================================================================== */
 .cmm-mf .cmm-mf-steps {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
     list-style: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    display: flex !important;
-    gap: 0 !important;
-    border-bottom: 1px solid var(--cmm-mf-border-soft) !important;
+    position: relative !important;
+    border: 0 !important;
+}
+/* Track line behind the circles */
+.cmm-mf .cmm-mf-steps::before,
+.cmm-mf .cmm-mf-steps::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 19px !important;
+    height: 3px !important;
+    left: 12.5% !important;
+}
+.cmm-mf .cmm-mf-steps::before {
+    right: 12.5% !important;
+    background: var(--cmm-mf-border-soft) !important;
+    z-index: 0 !important;
+}
+.cmm-mf .cmm-mf-steps::after {
+    width: calc(var(--cmm-mf-progress, 0) * 75%) !important;
+    background: var(--cmm-mf-primary) !important;
+    z-index: 1 !important;
+    transition: width .3s ease !important;
 }
 .cmm-mf .cmm-mf-steps li {
-    flex: 1 !important;
-    padding: 10px 8px !important;
-    margin: 0 0 -1px !important;
+    position: relative !important;
+    z-index: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
     text-align: center !important;
     color: var(--cmm-mf-muted) !important;
-    font-size: 0.9em !important;
-    border-bottom: 3px solid transparent !important;
-    transition: color .2s, border-color .2s;
+    font-size: 0.95em !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
 }
 .cmm-mf .cmm-mf-steps li span {
-    display: inline-block !important;
-    width: 22px !important;
-    height: 22px !important;
-    line-height: 22px !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 40px !important;
+    height: 40px !important;
     border-radius: 50% !important;
-    background: var(--cmm-mf-border-soft) !important;
+    background: #e5e7eb !important;
     color: var(--cmm-mf-muted) !important;
     font-weight: 700 !important;
-    margin: 0 6px 0 0 !important;
+    font-size: 15px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
     padding: 0 !important;
-    text-align: center !important;
 }
 .cmm-mf .cmm-mf-steps li.done,
-.cmm-mf .cmm-mf-steps li.active {
-    color: var(--cmm-mf-accent) !important;
-    border-color: var(--cmm-mf-accent) !important;
-}
-.cmm-mf .cmm-mf-steps li.active { font-weight: 600 !important; }
+.cmm-mf .cmm-mf-steps li.active { color: var(--cmm-mf-primary) !important; }
 .cmm-mf .cmm-mf-steps li.done span,
 .cmm-mf .cmm-mf-steps li.active span {
-    background: var(--cmm-mf-accent) !important;
+    background: var(--cmm-mf-primary) !important;
     color: #fff !important;
+}
+/* Replace digit with check on completed steps */
+.cmm-mf .cmm-mf-steps li.done span { font-size: 0 !important; }
+.cmm-mf .cmm-mf-steps li.done span::before {
+    content: "\2713" !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
 }
 
 /* =============================================================================
- * Panels — flex column. Gap between every field is exactly --cmm-mf-gap.
+ * Panel — the card
  * ========================================================================== */
 .cmm-mf .cmm-mf-panel {
     display: flex !important;
     flex-direction: column !important;
-    gap: var(--cmm-mf-gap) !important;
+    /* Section-level rhythm: a bit more breathing room between the top
+     * row, the section blocks, and the actions row. Within each
+     * .cmm-mf-section the tighter --cmm-mf-gap is used. */
+    gap: var(--cmm-mf-section-gap) !important;
     margin: 0 !important;
-    padding: 18px 20px !important;
+    padding: 40px 56px !important;
     border: 1px solid var(--cmm-mf-border-soft) !important;
     border-radius: var(--cmm-mf-radius) !important;
     background: var(--cmm-mf-bg) !important;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08) !important;
 }
 .cmm-mf .cmm-mf-panel[hidden] { display: none !important; }
-
-/* Every direct child of the panel has no margin — gap owns the spacing. */
 .cmm-mf .cmm-mf-panel > * { margin: 0 !important; }
+
+/* Big centered panel title */
+.cmm-mf .cmm-mf-panel > h2 {
+    margin: 0 0 12px !important;
+    padding: 0 !important;
+    text-align: center !important;
+    font-size: 30px !important;
+    line-height: 1.2 !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.03em !important;
+    color: var(--cmm-mf-text) !important;
+}
+
+/* Hero icon — sits above the panel title (e.g. step 1 map pin) */
+.cmm-mf .cmm-mf-hero {
+    display: flex !important;
+    justify-content: center !important;
+    margin: 0 0 -4px !important;
+    padding: 0 !important;
+}
+.cmm-mf .cmm-mf-hero-icon {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    background: var(--cmm-mf-primary-soft) !important;
+    color: var(--cmm-mf-primary) !important;
+    display: grid !important;
+    place-items: center !important;
+}
+.cmm-mf .cmm-mf-hero-icon svg {
+    width: 28px !important;
+    height: 28px !important;
+    display: block !important;
+}
+
+/* Centered subtitle directly under the panel title */
+.cmm-mf .cmm-mf-subtitle {
+    margin: -16px 0 0 !important;
+    padding: 0 !important;
+    text-align: center !important;
+    color: var(--cmm-mf-muted) !important;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+}
+
+/* =============================================================================
+ * Section block (Household, Off-Island, etc.)
+ * ========================================================================== */
+.cmm-mf .cmm-mf-section {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--cmm-mf-gap) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.cmm-mf .cmm-mf-section > * { margin: 0 !important; }
+
+.cmm-mf .cmm-mf-section-heading {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin: 0 0 4px !important;
+    padding: 0 !important;
+}
+/* Trailing horizontal rule after the section title text */
+.cmm-mf .cmm-mf-section-heading::after {
+    content: "" !important;
+    flex: 1 !important;
+    height: 1px !important;
+    background: var(--cmm-mf-border-soft) !important;
+}
+.cmm-mf .cmm-mf-section-icon {
+    flex: 0 0 auto !important;
+    width: 24px !important;
+    height: 24px !important;
+    color: var(--cmm-mf-primary) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.cmm-mf .cmm-mf-section-icon svg {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+}
+.cmm-mf .cmm-mf-section-heading > h3 {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+    color: var(--cmm-mf-text) !important;
+    line-height: 1.2 !important;
+}
+.cmm-mf .cmm-mf-optional {
+    margin-left: 6px !important;
+    color: var(--cmm-mf-muted) !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+}
 
 /* =============================================================================
  * Labels + inputs
  * ========================================================================== */
 .cmm-mf .cmm-mf-label {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
     margin: 0 !important;
     padding: 0 !important;
+    font-size: 15px !important;
     font-weight: 600 !important;
     color: var(--cmm-mf-label) !important;
     line-height: 1.4 !important;
     text-align: left !important;
 }
+.cmm-mf .cmm-mf-label > input,
+.cmm-mf .cmm-mf-label > textarea,
+.cmm-mf .cmm-mf-label > select,
+.cmm-mf .cmm-mf-typeahead { order: 2 !important; }
+.cmm-mf .cmm-mf-label > .cmm-mf-hint { order: 1 !important; margin-top: -2px !important; }
+
 .cmm-mf .cmm-mf-label input,
 .cmm-mf .cmm-mf-label textarea,
 .cmm-mf .cmm-mf-label select {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 4px 0 0 !important;
-    padding: 8px 12px !important;
+    min-height: 50px !important;
+    margin: 0 !important;
+    padding: 12px 16px !important;
     border: 1px solid var(--cmm-mf-border) !important;
     border-radius: var(--cmm-mf-radius-input) !important;
-    font-size: 1em !important;
+    font-size: 16px !important;
     font-family: inherit !important;
     font-weight: 400 !important;
     line-height: 1.4 !important;
@@ -210,64 +320,83 @@
     background: var(--cmm-mf-bg) !important;
     text-align: left !important;
     box-shadow: none !important;
+    transition: border-color .16s ease, box-shadow .16s ease !important;
 }
+.cmm-mf .cmm-mf-label input::placeholder,
+.cmm-mf .cmm-mf-label textarea::placeholder { color: #9ca3af !important; }
+
+.cmm-mf .cmm-mf-label input:hover,
+.cmm-mf .cmm-mf-label textarea:hover,
+.cmm-mf .cmm-mf-label select:hover { border-color: #b8c2d2 !important; }
+
 .cmm-mf .cmm-mf-label input:focus,
 .cmm-mf .cmm-mf-label textarea:focus,
 .cmm-mf .cmm-mf-label select:focus {
     outline: none !important;
-    border-color: var(--cmm-mf-accent) !important;
-    box-shadow: 0 0 0 3px var(--cmm-mf-accent-soft) !important;
+    border-color: var(--cmm-mf-primary) !important;
+    box-shadow: 0 0 0 4px var(--cmm-mf-primary-soft) !important;
 }
 .cmm-mf .cmm-mf-label textarea {
     resize: vertical !important;
-    min-height: 68px !important;
+    min-height: 120px !important;
 }
 
 .cmm-mf .cmm-mf-hint {
     display: block !important;
     font-weight: 400 !important;
-    font-size: 0.85em !important;
+    font-size: 14px !important;
     color: var(--cmm-mf-muted) !important;
-    margin: 2px 0 0 !important;
+    margin: 0 !important;
     padding: 0 !important;
+    line-height: 1.45 !important;
 }
-
 .cmm-mf .cmm-mf-req {
     color: var(--cmm-mf-required) !important;
     margin-left: 2px !important;
+    font-weight: 700 !important;
 }
 
+/* Checkbox row */
 .cmm-mf .cmm-mf-checkbox {
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
-    margin: 0 !important;
+    gap: 12px !important;
+    margin: 4px 0 0 !important;
     padding: 0 !important;
+    font-size: 15px !important;
     font-weight: 500 !important;
     color: var(--cmm-mf-label) !important;
     cursor: pointer;
     text-align: left !important;
 }
 .cmm-mf .cmm-mf-checkbox input {
-    width: auto !important;
+    width: 22px !important;
+    height: 22px !important;
+    min-height: 22px !important;
     margin: 0 !important;
+    padding: 0 !important;
     flex: 0 0 auto !important;
+    accent-color: var(--cmm-mf-primary) !important;
+    border-radius: 5px !important;
 }
 
 /* =============================================================================
- * Rows — paired fields balance equally
+ * Rows — paired and triple field layouts
  * ========================================================================== */
 .cmm-mf .cmm-mf-row {
     display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 0 12px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: var(--cmm-mf-gap) 28px !important;
     margin: 0 !important;
     padding: 0 !important;
 }
-.cmm-mf .cmm-mf-row .cmm-mf-label { margin: 0 !important; }
+.cmm-mf .cmm-mf-row > .cmm-mf-label { margin: 0 !important; }
 
-/* City / State / Postal Code in one balanced row. */
-.cmm-mf .cmm-mf-row-csz { grid-template-columns: 1fr 90px 130px !important; }
+/* City / State / Postal Code */
+.cmm-mf .cmm-mf-row-csz {
+    grid-template-columns: 1.4fr 0.5fr 0.8fr !important;
+    gap: var(--cmm-mf-gap) 24px !important;
+}
 
 /* =============================================================================
  * Address typeahead
@@ -281,69 +410,126 @@
     background: var(--cmm-mf-bg) !important;
     border: 1px solid var(--cmm-mf-border) !important;
     border-radius: 0 0 var(--cmm-mf-radius-input) var(--cmm-mf-radius-input) !important;
-    max-height: 240px !important;
+    max-height: 280px !important;
     overflow-y: auto !important;
     z-index: 50 !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, .08) !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
     margin: 0 !important;
     padding: 0 !important;
     list-style: none !important;
 }
 .cmm-mf .cmm-mf-address-dropdown[hidden] { display: none !important; }
 .cmm-mf .cmm-mf-option {
-    padding: 8px 12px !important;
+    padding: 12px 16px !important;
     margin: 0 !important;
     cursor: pointer;
     border-bottom: 1px solid var(--cmm-mf-border-soft) !important;
+    font-size: 15px !important;
+    color: var(--cmm-mf-text) !important;
 }
 .cmm-mf .cmm-mf-option:last-child { border-bottom: none !important; }
-.cmm-mf .cmm-mf-option:hover { background: var(--cmm-mf-accent-soft) !important; }
+.cmm-mf .cmm-mf-option:hover { background: var(--cmm-mf-primary-soft) !important; }
 .cmm-mf .cmm-mf-no-results {
-    padding: 10px 12px !important;
+    padding: 12px 16px !important;
     margin: 0 !important;
     color: var(--cmm-mf-muted) !important;
     font-style: italic !important;
 }
 
 /* =============================================================================
- * Status card — collapses when empty
+ * Status card — icon column on the left, content stack on the right
  * ========================================================================== */
 .cmm-mf .cmm-mf-status-card { margin: 0 !important; padding: 0 !important; }
 .cmm-mf .cmm-mf-status-card:empty { display: none !important; }
 .cmm-mf .cmm-mf-card {
-    padding: 10px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 16px 18px !important;
     margin: 0 !important;
     border-radius: var(--cmm-mf-radius-input) !important;
     border: 1px solid !important;
+    font-size: 15px !important;
+    line-height: 1.5 !important;
+}
+.cmm-mf .cmm-mf-card-icon {
+    flex: 0 0 auto !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    display: grid !important;
+    place-items: center !important;
+    color: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.cmm-mf .cmm-mf-card-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+    display: block !important;
+}
+.cmm-mf .cmm-mf-card-body {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 .cmm-mf .cmm-mf-card strong {
     display: block !important;
     font-size: 1.05em !important;
-    margin: 0 0 2px !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
-.cmm-mf .cmm-mf-card-headline { margin: 2px 0 2px !important; padding: 0 !important; font-weight: 600 !important; }
-.cmm-mf .cmm-mf-card-detail   { margin: 0 !important; padding: 0 !important; font-size: 0.95em !important; }
-.cmm-mf .cmm-mf-card-ok   { background: #f0fdf4 !important; border-color: #86efac !important; color: #166534 !important; }
-.cmm-mf .cmm-mf-card-info { background: #eff6ff !important; border-color: #93c5fd !important; color: #1e3a8a !important; }
-.cmm-mf .cmm-mf-card-warn { background: #fefce8 !important; border-color: #fde047 !important; color: #854d0e !important; }
+.cmm-mf .cmm-mf-card-headline {
+    margin: 2px 0 0 !important;
+    padding: 0 !important;
+    font-weight: 600 !important;
+    color: var(--cmm-mf-text) !important;
+}
+.cmm-mf .cmm-mf-card-detail {
+    margin: 2px 0 0 !important;
+    padding: 0 !important;
+    font-size: 14px !important;
+    color: var(--cmm-mf-muted) !important;
+}
+.cmm-mf .cmm-mf-card-detail strong {
+    display: inline !important;
+    color: var(--cmm-mf-text) !important;
+    font-size: 1em !important;
+    font-weight: 700 !important;
+}
+
+/* Tones */
+.cmm-mf .cmm-mf-card-ok   { background: #f0fdf4 !important; border-color: #86efac !important; }
+.cmm-mf .cmm-mf-card-ok   strong:first-child       { color: #166534 !important; }
+.cmm-mf .cmm-mf-card-ok   .cmm-mf-card-icon        { background: #22c55e !important; }
+
+.cmm-mf .cmm-mf-card-info { background: #eff6ff !important; border-color: #93c5fd !important; }
+.cmm-mf .cmm-mf-card-info strong:first-child       { color: #1e3a8a !important; }
+.cmm-mf .cmm-mf-card-info .cmm-mf-card-icon        { background: #3b82f6 !important; }
+
+.cmm-mf .cmm-mf-card-warn { background: #fefce8 !important; border-color: #fde047 !important; }
+.cmm-mf .cmm-mf-card-warn strong:first-child       { color: #854d0e !important; }
+.cmm-mf .cmm-mf-card-warn .cmm-mf-card-icon        { background: #f59e0b !important; }
+
 .cmm-mf .cmm-mf-loading { color: var(--cmm-mf-muted) !important; font-style: italic !important; padding: 4px 0 !important; margin: 0 !important; }
 
 /* =============================================================================
- * Account feedback (existing / new) — collapses when empty
+ * Account feedback (existing / new)
  * ========================================================================== */
 .cmm-mf .cmm-mf-account-feedback { margin: 0 !important; padding: 0 !important; }
 .cmm-mf .cmm-mf-account-feedback:empty { display: none !important; }
 .cmm-mf .cmm-mf-feedback {
     margin: 0 !important;
-    padding: 10px 12px !important;
+    padding: 12px 16px !important;
     border-radius: var(--cmm-mf-radius-input) !important;
-    font-size: 0.95em !important;
+    font-size: 15px !important;
+    line-height: 1.5 !important;
 }
 .cmm-mf .cmm-mf-feedback-info { background: #eff6ff !important; border: 1px solid #93c5fd !important; color: #1e3a8a !important; }
 .cmm-mf .cmm-mf-feedback-new  { background: #f5f3ff !important; border: 1px solid #c4b5fd !important; color: #5b21b6 !important; }
 
-/* The new-account container is itself a flex column so its labels and
- * feedback sit on the same gap rhythm as the rest of the panel. */
 .cmm-mf .cmm-mf-new-account {
     display: flex !important;
     flex-direction: column !important;
@@ -354,24 +540,22 @@
 .cmm-mf .cmm-mf-new-account > * { margin: 0 !important; }
 .cmm-mf .cmm-mf-new-account[hidden] { display: none !important; }
 
-/* Username / password feedback */
 .cmm-mf .cmm-mf-username-feedback,
 .cmm-mf .cmm-mf-password-meter {
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 0.85em !important;
+    font-size: 14px !important;
 }
 .cmm-mf .cmm-mf-username-feedback:empty,
 .cmm-mf .cmm-mf-password-meter:empty { display: none !important; }
 .cmm-mf .cmm-mf-ok   { color: #16a34a !important; font-weight: 600 !important; }
 .cmm-mf .cmm-mf-warn { color: #b45309 !important; font-weight: 600 !important; }
-.cmm-mf .cmm-mf-warn a { color: var(--cmm-mf-accent) !important; }
-
+.cmm-mf .cmm-mf-warn a { color: var(--cmm-mf-primary) !important; }
 .cmm-mf .cmm-mf-strength {
     display: inline-block !important;
-    padding: 2px 10px !important;
-    border-radius: 10px !important;
-    font-size: 0.8em !important;
+    padding: 3px 10px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
     font-weight: 600 !important;
 }
 .cmm-mf .cmm-mf-strength-vweak  { background: #fee2e2 !important; color: #991b1b !important; }
@@ -388,10 +572,11 @@
     background: #fef2f2 !important;
     border: 1px solid #fecaca !important;
     color: #991b1b !important;
-    padding: 10px 14px !important;
+    padding: 12px 16px !important;
     margin: 0 !important;
     border-radius: var(--cmm-mf-radius-input) !important;
     font-weight: 500 !important;
+    font-size: 15px !important;
 }
 .cmm-mf .cmm-mf-inline-error:empty { display: none !important; }
 
@@ -402,79 +587,79 @@
     background: var(--cmm-mf-bg-soft) !important;
     border: 1px solid var(--cmm-mf-border-soft) !important;
     border-radius: var(--cmm-mf-radius-input) !important;
-    padding: 12px 14px !important;
+    padding: 16px 18px !important;
     margin: 0 !important;
+    font-size: 15px !important;
 }
-.cmm-mf .cmm-mf-dues-summary strong { font-size: 1.2em !important; color: var(--cmm-mf-text) !important; }
+.cmm-mf .cmm-mf-dues-summary strong { font-size: 1.25em !important; color: var(--cmm-mf-text) !important; }
 
 /* =============================================================================
  * Review list (step 4)
  * ========================================================================== */
 .cmm-mf .cmm-mf-review-list {
     display: grid !important;
-    grid-template-columns: 170px 1fr !important;
-    gap: 4px 16px !important;
+    grid-template-columns: 180px 1fr !important;
+    gap: 6px 24px !important;
     margin: 0 !important;
     padding: 0 !important;
+    font-size: 15px !important;
 }
 .cmm-mf .cmm-mf-review-list dt {
-    margin: 0 !important;
-    padding: 0 !important;
-    font-weight: 600 !important;
-    color: var(--cmm-mf-muted) !important;
+    margin: 0 !important; padding: 0 !important;
+    font-weight: 600 !important; color: var(--cmm-mf-muted) !important;
 }
 .cmm-mf .cmm-mf-review-list dd {
-    margin: 0 !important;
-    padding: 0 !important;
+    margin: 0 !important; padding: 0 !important;
     color: var(--cmm-mf-text) !important;
 }
 
 /* =============================================================================
- * Action buttons — flex row with the buttons on opposite sides
+ * Action buttons — centered at the bottom of the card
  * ========================================================================== */
 .cmm-mf .cmm-mf-actions {
     display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
+    justify-content: center !important;
     align-items: center !important;
-    gap: 10px !important;
-    margin: 0 !important;
-    padding: 12px 0 0 !important;
-    border-top: 1px solid var(--cmm-mf-border-soft) !important;
+    gap: 18px !important;
+    margin: 12px 0 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
 }
-.cmm-mf .cmm-mf-actions .cmm-mf-next,
-.cmm-mf .cmm-mf-actions .cmm-mf-submit { margin-left: auto !important; }
-
 .cmm-mf .cmm-mf-btn {
-    display: inline-block !important;
-    width: auto !important;
-    max-width: none !important;
-    flex: 0 0 auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 170px !important;
+    min-height: 52px !important;
     margin: 0 !important;
-    padding: 8px 18px !important;
-    border: 1px solid var(--cmm-mf-border) !important;
+    padding: 0 28px !important;
     border-radius: var(--cmm-mf-radius-input) !important;
-    background: var(--cmm-mf-bg) !important;
-    color: var(--cmm-mf-label) !important;
     font-family: inherit !important;
-    font-size: 0.95em !important;
-    font-weight: 600 !important;
+    font-size: 16px !important;
+    font-weight: 650 !important;
     line-height: 1.2 !important;
     text-transform: none !important;
     letter-spacing: 0 !important;
     text-align: center !important;
     cursor: pointer;
-    transition: background .15s, border-color .15s;
+    transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease !important;
+    box-shadow: none !important;
 }
-.cmm-mf .cmm-mf-btn:hover { background: var(--cmm-mf-bg-soft) !important; }
+.cmm-mf .cmm-mf-btn:hover { transform: translateY(-1px) !important; }
+.cmm-mf .cmm-mf-btn {
+    background: var(--cmm-mf-bg) !important;
+    border: 1px solid var(--cmm-mf-primary) !important;
+    color: var(--cmm-mf-primary) !important;
+}
+.cmm-mf .cmm-mf-btn:hover { background: var(--cmm-mf-primary-soft) !important; }
 .cmm-mf .cmm-mf-btn-primary {
-    background: var(--cmm-mf-accent) !important;
-    border-color: var(--cmm-mf-accent) !important;
+    background: var(--cmm-mf-primary) !important;
+    border-color: var(--cmm-mf-primary) !important;
     color: #fff !important;
 }
 .cmm-mf .cmm-mf-btn-primary:hover {
-    background: var(--cmm-mf-accent-hover) !important;
-    border-color: var(--cmm-mf-accent-hover) !important;
+    background: var(--cmm-mf-primary-dark) !important;
+    border-color: var(--cmm-mf-primary-dark) !important;
 }
 
 /* =============================================================================
@@ -483,25 +668,50 @@
 .cmm-mf-confirmation {
     max-width: 720px !important;
     margin: 0 auto !important;
-    padding: 24px !important;
-    border: 1px solid var(--cmm-mf-border-soft) !important;
-    border-radius: var(--cmm-mf-radius, 8px) !important;
+    padding: 32px 40px !important;
+    border: 1px solid var(--cmm-mf-border-soft, #e8edf5) !important;
+    border-radius: var(--cmm-mf-radius, 14px) !important;
     background: var(--cmm-mf-bg, #fff) !important;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08) !important;
     text-align: left !important;
 }
 
 /* =============================================================================
  * Narrow screens
  * ========================================================================== */
-@media (max-width: 600px) {
-    .cmm-mf .cmm-mf-panel { padding: 14px !important; }
+@media (max-width: 760px) {
+    .cmm-mf .cmm-mf-panel { padding: 28px 22px !important; }
+    .cmm-mf .cmm-mf-panel > h2 { font-size: 24px !important; }
+
     .cmm-mf .cmm-mf-row,
     .cmm-mf .cmm-mf-row-csz {
         grid-template-columns: 1fr !important;
         gap: var(--cmm-mf-gap) 0 !important;
     }
-    .cmm-mf .cmm-mf-review-list { grid-template-columns: 1fr !important; gap: 0 !important; }
-    .cmm-mf .cmm-mf-review-list dd { margin: 0 0 8px !important; }
-    .cmm-mf .cmm-mf-steps li { font-size: 0.78em !important; padding: 8px 4px !important; }
-    .cmm-mf .cmm-mf-steps li span { display: block !important; margin: 0 auto 4px !important; }
+    .cmm-mf .cmm-mf-review-list { grid-template-columns: 1fr !important; gap: 2px 0 !important; }
+    .cmm-mf .cmm-mf-review-list dd { margin: 0 0 10px !important; }
+
+    .cmm-mf .cmm-mf-steps {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .cmm-mf .cmm-mf-steps::before,
+    .cmm-mf .cmm-mf-steps::after { display: none !important; }
+    .cmm-mf .cmm-mf-steps li {
+        flex-direction: row !important;
+        gap: 12px !important;
+        padding: 8px 12px !important;
+        background: var(--cmm-mf-bg) !important;
+        border: 1px solid var(--cmm-mf-border-soft) !important;
+        border-radius: 10px !important;
+    }
+    .cmm-mf .cmm-mf-steps li span { width: 32px !important; height: 32px !important; }
+
+    .cmm-mf .cmm-mf-section-heading::after { display: none !important; }
+
+    .cmm-mf .cmm-mf-actions {
+        flex-direction: column-reverse !important;
+        gap: 10px !important;
+    }
+    .cmm-mf .cmm-mf-btn { width: 100% !important; }
 }
