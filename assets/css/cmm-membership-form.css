@@ -199,7 +199,10 @@
 /* Hero icon — sits above the panel title (e.g. step 1 map pin) */
 .cmm-mf .cmm-mf-hero {
     display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
     justify-content: center !important;
+    width: 100% !important;
     margin: 0 0 -4px !important;
     padding: 0 !important;
 }
@@ -412,6 +415,14 @@
 .cmm-mf .cmm-mf-row-csz {
     grid-template-columns: 1.4fr 0.5fr 0.8fr !important;
     gap: var(--cmm-mf-gap) 24px !important;
+}
+
+/* Step 1 is a single-field step; constrain the input and its status card
+ * to half the panel width and center them so the layout reads tight. */
+.cmm-mf .cmm-mf-panel[data-step="1"] > .cmm-mf-label,
+.cmm-mf .cmm-mf-panel[data-step="1"] > .cmm-mf-status-card {
+    width: 50% !important;
+    align-self: center !important;
 }
 
 /* =============================================================================
@@ -703,6 +714,11 @@
 @media (max-width: 760px) {
     .cmm-mf .cmm-mf-panel { padding: 28px 22px !important; }
     .cmm-mf .cmm-mf-panel > h2 { font-size: 24px !important; }
+
+    .cmm-mf .cmm-mf-panel[data-step="1"] > .cmm-mf-label,
+    .cmm-mf .cmm-mf-panel[data-step="1"] > .cmm-mf-status-card {
+        width: 100% !important;
+    }
 
     .cmm-mf .cmm-mf-row,
     .cmm-mf .cmm-mf-row-csz {
