@@ -114,58 +114,78 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 Last Name <span class="cmm-mf-req">*</span>
                 <input type="text" name="last_name" autocomplete="family-name">
             </label>
-        </div>
-
-        <label class="cmm-mf-label">
-            Mobile Phone
-            <input type="tel" name="mobile" autocomplete="tel" placeholder="555-555-5555">
-        </label>
-
-        <h3>Household</h3>
-
-        <div class="cmm-mf-row">
             <label class="cmm-mf-label">
-                Spouse First Name
-                <input type="text" name="spouse_first_name">
-            </label>
-            <label class="cmm-mf-label">
-                Spouse Last Name
-                <input type="text" name="spouse_last_name">
+                Mobile Phone
+                <input type="tel" name="mobile" autocomplete="tel" placeholder="555-555-5555">
             </label>
         </div>
 
-        <label class="cmm-mf-label">
-            Children (Names &amp; Ages)
-            <small class="cmm-mf-hint">No badge charge for children under 12.</small>
-            <textarea name="children" rows="3" placeholder="e.g. Bobby (5), Alice (7)"></textarea>
-        </label>
+        <div class="cmm-mf-section">
+            <div class="cmm-mf-section-heading">
+                <span class="cmm-mf-section-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </span>
+                <h3>Household</h3>
+            </div>
 
-        <label class="cmm-mf-checkbox">
-            <input type="checkbox" name="directory_listed" value="1">
-            List our household in the Community Directory
-        </label>
+            <div class="cmm-mf-row">
+                <label class="cmm-mf-label">
+                    Spouse First Name
+                    <input type="text" name="spouse_first_name">
+                </label>
+                <label class="cmm-mf-label">
+                    Spouse Last Name
+                    <input type="text" name="spouse_last_name">
+                </label>
+            </div>
 
-        <h3>Off-Island Primary Home Address <small>(optional)</small></h3>
-        <p class="cmm-mf-hint">Fill in only if your primary residence is off-island.</p>
-
-        <label class="cmm-mf-label">
-            Street Address
-            <input type="text" name="primary_street" autocomplete="address-line1">
-        </label>
-
-        <div class="cmm-mf-row cmm-mf-row-csz">
             <label class="cmm-mf-label">
-                City
-                <input type="text" name="primary_city" autocomplete="address-level2">
+                Children (Names &amp; Ages)
+                <small class="cmm-mf-hint">No badge charge for children under 12.</small>
+                <textarea name="children" rows="3" placeholder="e.g. Bobby (5), Alice (7)"></textarea>
             </label>
+
+            <label class="cmm-mf-checkbox">
+                <input type="checkbox" name="directory_listed" value="1">
+                List our household in the Community Directory
+            </label>
+        </div>
+
+        <div class="cmm-mf-section">
+            <div class="cmm-mf-section-heading">
+                <span class="cmm-mf-section-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1Z"></path>
+                    </svg>
+                </span>
+                <h3>Off-Island Primary Home Address <small class="cmm-mf-optional">(optional)</small></h3>
+            </div>
+            <p class="cmm-mf-hint">Only complete this section if your primary residence is off-island.</p>
+
             <label class="cmm-mf-label">
-                State
-                <input type="text" name="primary_state" autocomplete="address-level1" maxlength="2">
+                Street Address
+                <input type="text" name="primary_street" autocomplete="address-line1">
             </label>
-            <label class="cmm-mf-label">
-                Postal Code
-                <input type="text" name="primary_zip" autocomplete="postal-code" maxlength="10">
-            </label>
+
+            <div class="cmm-mf-row cmm-mf-row-csz">
+                <label class="cmm-mf-label">
+                    City
+                    <input type="text" name="primary_city" autocomplete="address-level2">
+                </label>
+                <label class="cmm-mf-label">
+                    State
+                    <input type="text" name="primary_state" autocomplete="address-level1" maxlength="2">
+                </label>
+                <label class="cmm-mf-label">
+                    Postal Code
+                    <input type="text" name="primary_zip" autocomplete="postal-code" maxlength="10">
+                </label>
+            </div>
         </div>
 
         <div class="cmm-mf-actions">

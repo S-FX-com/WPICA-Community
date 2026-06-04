@@ -31,6 +31,9 @@
             li.classList.toggle('active', step === n);
             li.classList.toggle('done',   step < n);
         });
+        // Drives the connector-line fill in the stepper. With 4 steps, the
+        // progress walks 0 -> 1/3 -> 2/3 -> 1 as the visitor advances.
+        form.style.setProperty('--cmm-mf-progress', String((n - 1) / 3));
         if (n === 4) buildReview();
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
