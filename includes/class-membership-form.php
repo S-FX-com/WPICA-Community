@@ -342,6 +342,14 @@ class CMM_Membership_Form {
         }
         wp_enqueue_style( 'cmm-membership-form' );
         wp_enqueue_script( 'cmm-membership-form' );
+
+        // Admin-defined Custom CSS rides on the registered handle so it loads
+        // after the plugin stylesheet and wins the cascade. Empty option ->
+        // no inline style is added.
+        $custom_css = trim( (string) get_option( 'cmm_form_custom_css', '' ) );
+        if ( $custom_css !== '' ) {
+            wp_add_inline_style( 'cmm-membership-form', $custom_css );
+        }
     }
 
     // -------------------------------------------------------------------------
