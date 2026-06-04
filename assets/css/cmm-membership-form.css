@@ -52,8 +52,10 @@
 .cmm-mf {
     display: flex !important;
     flex-direction: column !important;
+    align-items: stretch !important;
     gap: var(--cmm-mf-frame-gap) !important;
 
+    width: 100% !important;
     max-width: 980px !important;
     margin: 0 auto !important;
     padding: 0 !important;
@@ -166,10 +168,12 @@
 .cmm-mf .cmm-mf-panel {
     display: flex !important;
     flex-direction: column !important;
+    align-items: stretch !important;
     /* Section-level rhythm: a bit more breathing room between the top
      * row, the section blocks, and the actions row. Within each
      * .cmm-mf-section the tighter --cmm-mf-gap is used. */
     gap: var(--cmm-mf-section-gap) !important;
+    width: 100% !important;
     margin: 0 !important;
     padding: 40px 56px !important;
     border: 1px solid var(--cmm-mf-border-soft) !important;
@@ -230,7 +234,9 @@
 .cmm-mf .cmm-mf-section {
     display: flex !important;
     flex-direction: column !important;
+    align-items: stretch !important;
     gap: var(--cmm-mf-gap) !important;
+    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
 }
@@ -286,20 +292,27 @@
 .cmm-mf .cmm-mf-label {
     display: flex !important;
     flex-direction: column !important;
+    align-items: stretch !important;
     gap: 8px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.4 !important;
+    text-align: left !important;
+}
+/* The visible label text + its required marker. Wrapping these in one
+ * element keeps the asterisk on the same line as the label inside the
+ * flex-column label (a bare text node would become its own flex item
+ * and drop the asterisk to the next line). */
+.cmm-mf .cmm-mf-label-text {
+    display: block !important;
     margin: 0 !important;
     padding: 0 !important;
     font-size: 15px !important;
     font-weight: 600 !important;
     color: var(--cmm-mf-label) !important;
     line-height: 1.4 !important;
-    text-align: left !important;
 }
-.cmm-mf .cmm-mf-label > input,
-.cmm-mf .cmm-mf-label > textarea,
-.cmm-mf .cmm-mf-label > select,
-.cmm-mf .cmm-mf-typeahead { order: 2 !important; }
-.cmm-mf .cmm-mf-label > .cmm-mf-hint { order: 1 !important; margin-top: -2px !important; }
 
 .cmm-mf .cmm-mf-label input,
 .cmm-mf .cmm-mf-label textarea,
@@ -359,6 +372,7 @@
 /* Checkbox row */
 .cmm-mf .cmm-mf-checkbox {
     display: flex !important;
+    flex-direction: row !important;
     align-items: center !important;
     gap: 12px !important;
     margin: 4px 0 0 !important;
@@ -369,6 +383,7 @@
     cursor: pointer;
     text-align: left !important;
 }
+.cmm-mf .cmm-mf-checkbox > span { flex: 1 1 auto !important; }
 .cmm-mf .cmm-mf-checkbox input {
     width: 22px !important;
     height: 22px !important;
@@ -387,10 +402,11 @@
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: var(--cmm-mf-gap) 28px !important;
+    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
 }
-.cmm-mf .cmm-mf-row > .cmm-mf-label { margin: 0 !important; }
+.cmm-mf .cmm-mf-row > .cmm-mf-label { margin: 0 !important; width: auto !important; }
 
 /* City / State / Postal Code */
 .cmm-mf .cmm-mf-row-csz {
@@ -533,7 +549,9 @@
 .cmm-mf .cmm-mf-new-account {
     display: flex !important;
     flex-direction: column !important;
+    align-items: stretch !important;
     gap: var(--cmm-mf-gap) !important;
+    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
 }
@@ -618,9 +636,12 @@
  * ========================================================================== */
 .cmm-mf .cmm-mf-actions {
     display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
     justify-content: center !important;
     align-items: center !important;
     gap: 18px !important;
+    width: 100% !important;
     margin: 12px 0 0 !important;
     padding: 0 !important;
     border: 0 !important;
