@@ -376,6 +376,8 @@ class CMM_Settings {
         $default_notice_new      = "No account yet &mdash; we'll create one when you submit.";
         $notice_existing = get_option( 'cmm_form_notice_existing_account', $default_notice_existing );
         $notice_new      = get_option( 'cmm_form_notice_new_account',      $default_notice_new );
+
+        $custom_css = (string) get_option( 'cmm_form_custom_css', '' );
         ?>
         <h3 style="margin-top:0;">Membership Form &amp; Payment Confirmation</h3>
         <p style="color:#646970;max-width:640px;">
@@ -455,6 +457,44 @@ class CMM_Settings {
                     <p class="description">
                         Shown when no existing user is found. The username + password fields
                         appear below this notice.
+                    </p>
+                </td>
+            </tr>
+        </table>
+
+        <h3>Custom CSS</h3>
+        <p style="color:#646970;max-width:640px;">
+            Override the form's appearance without forking the plugin. The form owns its
+            own layout; this CSS is loaded <em>after</em> the plugin stylesheet so it wins.
+            The cleanest way to re-skin is to override the custom properties exposed on
+            <code>.cmm-mf</code>:
+        </p>
+        <p style="color:#646970;max-width:640px;">
+            <code>--cmm-mf-accent</code>,
+            <code>--cmm-mf-accent-hover</code>,
+            <code>--cmm-mf-text</code>,
+            <code>--cmm-mf-label</code>,
+            <code>--cmm-mf-muted</code>,
+            <code>--cmm-mf-border</code>,
+            <code>--cmm-mf-bg</code>,
+            <code>--cmm-mf-bg-soft</code>,
+            <code>--cmm-mf-radius</code>,
+            <code>--cmm-mf-radius-input</code>,
+            <code>--cmm-mf-gap</code>,
+            <code>--cmm-mf-font</code>.
+        </p>
+        <table class="form-table" role="presentation">
+            <tr>
+                <th scope="row"><label for="cmm_form_custom_css">CSS</label></th>
+                <td>
+                    <textarea id="cmm_form_custom_css" name="cmm_form_custom_css"
+                              rows="10" class="large-text code"
+                              spellcheck="false"
+                              placeholder=".cmm-mf {&#10;    --cmm-mf-accent: #c00;&#10;    --cmm-mf-radius: 4px;&#10;}"><?php
+                        echo esc_textarea( $custom_css );
+                    ?></textarea>
+                    <p class="description">
+                        Plain CSS only. HTML tags are stripped on save.
                     </p>
                 </td>
             </tr>
@@ -732,6 +772,13 @@ class CMM_Settings {
         update_option(
             'cmm_form_notice_new_account',
             wp_kses( wp_unslash( $_POST['cmm_form_notice_new_account'] ?? '' ), $notice_allowed )
+        );
+
+        // Plain CSS only. Strip any HTML/PHP an admin might paste by accident
+        // (a stray <script> here would otherwise be served to every visitor).
+        update_option(
+            'cmm_form_custom_css',
+            wp_strip_all_tags( wp_unslash( $_POST['cmm_form_custom_css'] ?? '' ) )
         );
     }
 
