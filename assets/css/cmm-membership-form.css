@@ -192,6 +192,38 @@
     color: var(--cmm-mf-text) !important;
 }
 
+/* Hero icon — sits above the panel title (e.g. step 1 map pin) */
+.cmm-mf .cmm-mf-hero {
+    display: flex !important;
+    justify-content: center !important;
+    margin: 0 0 -4px !important;
+    padding: 0 !important;
+}
+.cmm-mf .cmm-mf-hero-icon {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    background: var(--cmm-mf-primary-soft) !important;
+    color: var(--cmm-mf-primary) !important;
+    display: grid !important;
+    place-items: center !important;
+}
+.cmm-mf .cmm-mf-hero-icon svg {
+    width: 28px !important;
+    height: 28px !important;
+    display: block !important;
+}
+
+/* Centered subtitle directly under the panel title */
+.cmm-mf .cmm-mf-subtitle {
+    margin: -16px 0 0 !important;
+    padding: 0 !important;
+    text-align: center !important;
+    color: var(--cmm-mf-muted) !important;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+}
+
 /* =============================================================================
  * Section block (Household, Off-Island, etc.)
  * ========================================================================== */
@@ -405,27 +437,82 @@
 }
 
 /* =============================================================================
- * Status card
+ * Status card — icon column on the left, content stack on the right
  * ========================================================================== */
 .cmm-mf .cmm-mf-status-card { margin: 0 !important; padding: 0 !important; }
 .cmm-mf .cmm-mf-status-card:empty { display: none !important; }
 .cmm-mf .cmm-mf-card {
-    padding: 14px 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 16px 18px !important;
     margin: 0 !important;
     border-radius: var(--cmm-mf-radius-input) !important;
     border: 1px solid !important;
     font-size: 15px !important;
+    line-height: 1.5 !important;
+}
+.cmm-mf .cmm-mf-card-icon {
+    flex: 0 0 auto !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    display: grid !important;
+    place-items: center !important;
+    color: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.cmm-mf .cmm-mf-card-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+    display: block !important;
+}
+.cmm-mf .cmm-mf-card-body {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 .cmm-mf .cmm-mf-card strong {
     display: block !important;
     font-size: 1.05em !important;
-    margin: 0 0 4px !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
-.cmm-mf .cmm-mf-card-headline { margin: 2px 0 2px !important; padding: 0 !important; font-weight: 600 !important; }
-.cmm-mf .cmm-mf-card-detail   { margin: 0 !important; padding: 0 !important; font-size: 0.95em !important; }
-.cmm-mf .cmm-mf-card-ok   { background: #f0fdf4 !important; border-color: #86efac !important; color: #166534 !important; }
-.cmm-mf .cmm-mf-card-info { background: #eff6ff !important; border-color: #93c5fd !important; color: #1e3a8a !important; }
-.cmm-mf .cmm-mf-card-warn { background: #fefce8 !important; border-color: #fde047 !important; color: #854d0e !important; }
+.cmm-mf .cmm-mf-card-headline {
+    margin: 2px 0 0 !important;
+    padding: 0 !important;
+    font-weight: 600 !important;
+    color: var(--cmm-mf-text) !important;
+}
+.cmm-mf .cmm-mf-card-detail {
+    margin: 2px 0 0 !important;
+    padding: 0 !important;
+    font-size: 14px !important;
+    color: var(--cmm-mf-muted) !important;
+}
+.cmm-mf .cmm-mf-card-detail strong {
+    display: inline !important;
+    color: var(--cmm-mf-text) !important;
+    font-size: 1em !important;
+    font-weight: 700 !important;
+}
+
+/* Tones */
+.cmm-mf .cmm-mf-card-ok   { background: #f0fdf4 !important; border-color: #86efac !important; }
+.cmm-mf .cmm-mf-card-ok   strong:first-child       { color: #166534 !important; }
+.cmm-mf .cmm-mf-card-ok   .cmm-mf-card-icon        { background: #22c55e !important; }
+
+.cmm-mf .cmm-mf-card-info { background: #eff6ff !important; border-color: #93c5fd !important; }
+.cmm-mf .cmm-mf-card-info strong:first-child       { color: #1e3a8a !important; }
+.cmm-mf .cmm-mf-card-info .cmm-mf-card-icon        { background: #3b82f6 !important; }
+
+.cmm-mf .cmm-mf-card-warn { background: #fefce8 !important; border-color: #fde047 !important; }
+.cmm-mf .cmm-mf-card-warn strong:first-child       { color: #854d0e !important; }
+.cmm-mf .cmm-mf-card-warn .cmm-mf-card-icon        { background: #f59e0b !important; }
+
 .cmm-mf .cmm-mf-loading { color: var(--cmm-mf-muted) !important; font-style: italic !important; padding: 4px 0 !important; margin: 0 !important; }
 
 /* =============================================================================

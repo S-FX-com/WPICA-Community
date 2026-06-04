@@ -30,8 +30,16 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     <!-- Step 1: Address                                                 -->
     <!-- ============================================================== -->
     <section class="cmm-mf-panel" data-step="1">
+        <div class="cmm-mf-hero" aria-hidden="true">
+            <span class="cmm-mf-hero-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+            </span>
+        </div>
         <h2>Find your address</h2>
-        <p class="cmm-mf-hint">Start typing your WPI street address and pick it from the list.</p>
+        <p class="cmm-mf-subtitle">Start typing your WPI street address, then select the matching result below.</p>
 
         <label class="cmm-mf-label">
             Street Address <span class="cmm-mf-req">*</span>

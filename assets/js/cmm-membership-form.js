@@ -152,33 +152,48 @@
             .catch(function () { statusCard.innerHTML = ''; });
     }
 
+    // Inline Feather-style icons rendered into the status card based on tone.
+    var STATUS_ICONS = {
+        ok:   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+        info: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+        warn: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+    };
+
     function renderStatusCard(s) {
         if (!s || s.error) { statusCard.innerHTML = ''; return; }
-        var tone, headline, detail;
+        var tone, headline, detailHTML;
+        // The "dues are still open" copy reads better with the current year
+        // attached, since the membership is effectively for that calendar year.
+        var year = new Date().getFullYear();
+        var duesAmtHTML = '<strong>$' + dues.toFixed(2) + '</strong>';
+
         if (s.status === 'active') {
             tone = 'info';
             headline = 'This address is currently active.';
-            detail = s.dues_paid_date
-                ? 'Last payment recorded ' + s.dues_paid_date + '. You can still submit a renewal — it will refresh the cycle.'
+            detailHTML = s.dues_paid_date
+                ? 'Last payment recorded ' + escapeHtml(s.dues_paid_date) + '. You can still submit a renewal — it will refresh the cycle.'
                 : 'You can still submit a renewal.';
         } else if (s.status === 'expired') {
             tone = 'warn';
             headline = 'This membership has expired.';
-            detail   = 'Renew now to reactivate — annual dues are $' + dues.toFixed(2) + '.';
+            detailHTML = 'Renew now to reactivate. Annual dues are ' + duesAmtHTML + '.';
         } else if (s.status === 'inactive') {
             tone = 'ok';
-            headline = 'Dues are still open.';
-            detail   = 'Annual dues are $' + dues.toFixed(2) + '.';
+            headline = 'Membership still available for ' + year + '.';
+            detailHTML = 'Annual dues are ' + duesAmtHTML + '.';
         } else {
             tone = 'info';
             headline = s.status_label || s.status;
-            detail   = 'Submitting will activate this membership immediately.';
+            detailHTML = 'Submitting will activate this membership immediately.';
         }
         statusCard.innerHTML =
             '<div class="cmm-mf-card cmm-mf-card-' + tone + '">' +
-            '<strong>' + escapeHtml(s.address) + '</strong>' +
-            '<p class="cmm-mf-card-headline">' + escapeHtml(headline) + '</p>' +
-            '<p class="cmm-mf-card-detail">' + escapeHtml(detail) + '</p>' +
+                '<span class="cmm-mf-card-icon" aria-hidden="true">' + STATUS_ICONS[tone] + '</span>' +
+                '<div class="cmm-mf-card-body">' +
+                    '<strong>' + escapeHtml(s.address) + '</strong>' +
+                    '<p class="cmm-mf-card-headline">' + escapeHtml(headline) + '</p>' +
+                    '<p class="cmm-mf-card-detail">' + detailHTML + '</p>' +
+                '</div>' +
             '</div>';
     }
 
