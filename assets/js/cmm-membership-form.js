@@ -164,7 +164,7 @@
             detail   = 'Renew now to reactivate — annual dues are $' + dues.toFixed(2) + '.';
         } else if (s.status === 'inactive') {
             tone = 'ok';
-            headline = 'This address is available.';
+            headline = 'Dues are still open.';
             detail   = 'Annual dues are $' + dues.toFixed(2) + '.';
         } else {
             tone = 'info';
