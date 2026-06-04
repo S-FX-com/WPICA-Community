@@ -7,6 +7,12 @@
  *
  * Class scope: every selector is prefixed `cmm-mf-` to avoid colliding with
  * the legacy SureForms typeahead markup (which uses #cmm-address-input).
+ *
+ * Label markup convention: the visible label text (and its required marker)
+ * live inside a `.cmm-mf-label-text` span so they render as a single line.
+ * The label itself is a flex column (text -> hint -> field), so the text
+ * MUST be wrapped — a bare text node would become its own flex item and
+ * the asterisk would drop to the next line.
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 ?>
@@ -42,7 +48,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
         <p class="cmm-mf-subtitle">Start typing your WPI street address, then select the matching result below.</p>
 
         <label class="cmm-mf-label">
-            Street Address <span class="cmm-mf-req">*</span>
+            <span class="cmm-mf-label-text">Street Address <span class="cmm-mf-req">*</span></span>
             <div class="cmm-mf-typeahead">
                 <input type="text"
                        class="cmm-mf-address-input"
@@ -66,7 +72,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
         <h2>Your account</h2>
 
         <label class="cmm-mf-label">
-            Email <span class="cmm-mf-req">*</span>
+            <span class="cmm-mf-label-text">Email <span class="cmm-mf-req">*</span></span>
             <input type="email"
                    name="email"
                    class="cmm-mf-email-input"
@@ -78,7 +84,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
         <div class="cmm-mf-new-account" hidden>
             <label class="cmm-mf-label">
-                Username <span class="cmm-mf-req">*</span>
+                <span class="cmm-mf-label-text">Username <span class="cmm-mf-req">*</span></span>
                 <small class="cmm-mf-hint">Letters, numbers, dots, and underscores. This becomes your login name.</small>
                 <input type="text"
                        name="username"
@@ -90,7 +96,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
             <div class="cmm-mf-username-feedback" aria-live="polite"></div>
 
             <label class="cmm-mf-label">
-                Password <span class="cmm-mf-req">*</span>
+                <span class="cmm-mf-label-text">Password <span class="cmm-mf-req">*</span></span>
                 <small class="cmm-mf-hint">At least 8 characters.</small>
                 <input type="password"
                        name="password"
@@ -115,15 +121,15 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
         <div class="cmm-mf-row">
             <label class="cmm-mf-label">
-                First Name <span class="cmm-mf-req">*</span>
+                <span class="cmm-mf-label-text">First Name <span class="cmm-mf-req">*</span></span>
                 <input type="text" name="first_name" autocomplete="given-name">
             </label>
             <label class="cmm-mf-label">
-                Last Name <span class="cmm-mf-req">*</span>
+                <span class="cmm-mf-label-text">Last Name <span class="cmm-mf-req">*</span></span>
                 <input type="text" name="last_name" autocomplete="family-name">
             </label>
             <label class="cmm-mf-label">
-                Mobile Phone
+                <span class="cmm-mf-label-text">Mobile Phone</span>
                 <input type="tel" name="mobile" autocomplete="tel" placeholder="555-555-5555">
             </label>
         </div>
@@ -143,24 +149,24 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
             <div class="cmm-mf-row">
                 <label class="cmm-mf-label">
-                    Spouse First Name
+                    <span class="cmm-mf-label-text">Spouse First Name</span>
                     <input type="text" name="spouse_first_name">
                 </label>
                 <label class="cmm-mf-label">
-                    Spouse Last Name
+                    <span class="cmm-mf-label-text">Spouse Last Name</span>
                     <input type="text" name="spouse_last_name">
                 </label>
             </div>
 
             <label class="cmm-mf-label">
-                Children (Names &amp; Ages)
+                <span class="cmm-mf-label-text">Children (Names &amp; Ages)</span>
                 <small class="cmm-mf-hint">No badge charge for children under 12.</small>
                 <textarea name="children" rows="3" placeholder="e.g. Bobby (5), Alice (7)"></textarea>
             </label>
 
             <label class="cmm-mf-checkbox">
                 <input type="checkbox" name="directory_listed" value="1">
-                List our household in the Community Directory
+                <span>List our household in the Community Directory</span>
             </label>
         </div>
 
@@ -176,21 +182,21 @@ if ( ! defined( 'ABSPATH' ) ) exit;
             <p class="cmm-mf-hint">Only complete this section if your primary residence is off-island.</p>
 
             <label class="cmm-mf-label">
-                Street Address
+                <span class="cmm-mf-label-text">Street Address</span>
                 <input type="text" name="primary_street" autocomplete="address-line1">
             </label>
 
             <div class="cmm-mf-row cmm-mf-row-csz">
                 <label class="cmm-mf-label">
-                    City
+                    <span class="cmm-mf-label-text">City</span>
                     <input type="text" name="primary_city" autocomplete="address-level2">
                 </label>
                 <label class="cmm-mf-label">
-                    State
+                    <span class="cmm-mf-label-text">State</span>
                     <input type="text" name="primary_state" autocomplete="address-level1" maxlength="2">
                 </label>
                 <label class="cmm-mf-label">
-                    Postal Code
+                    <span class="cmm-mf-label-text">Postal Code</span>
                     <input type="text" name="primary_zip" autocomplete="postal-code" maxlength="10">
                 </label>
             </div>
