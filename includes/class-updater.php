@@ -15,7 +15,7 @@ use YahnisElsts\PluginUpdateChecker\v5p7\Plugin\UpdateChecker as PucPluginUpdate
 class CMM_Updater {
 
     const GITHUB_USER   = 'S-FX-com';
-    const GITHUB_REPO   = 'BLT-Community';
+    const GITHUB_REPO   = 'WPICA-Community';
     const GITHUB_BRANCH = 'main';
 
     /** @var PucPluginUpdateChecker|null */
