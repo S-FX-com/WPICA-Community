@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Blt Community
- * Description: Home-centric membership management for civic associations and community organizations.
- * Version:     1.13.0
+ * Plugin Name: WPICA Community
+ * Description: Home-centric membership management for the West Point Island Civic Association.
+ * Version:     1.13.1
  * Author:      S-FX.com Small Business Solutions
  * Author URI:  https://www.s-fx.com
  * Text Domain: cmm
@@ -12,7 +12,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'CMM_VERSION', '1.13.0' );
+define( 'CMM_VERSION', '1.13.1' );
 define( 'CMM_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'CMM_URL',     plugin_dir_url( __FILE__ ) );
 

@@ -1,8 +1,8 @@
-# BLT Community
+# WPICA Community
 
-**Home-centric membership management for civic associations and community organizations.**
+**Home-centric membership management for the West Point Island Civic Association.**
 
-BLT Community is a WordPress plugin where the unit of membership is a **property address**, not an individual. Multiple residents can belong to one home. Not every home is required to be a member. Built to be deployed independently per community (West Point Island Civic Association, OBYC, Seacrest, etc.) — either as separate installs or as a WordPress Multisite network.
+WPICA Community is a WordPress plugin where the unit of membership is a **property address**, not an individual. Multiple residents can belong to one home. Not every home is required to be a member. Dedicated to the West Point Island Civic Association (WPICA); the architecture remains community-agnostic (all settings live under the `cmm_` prefix), so it can be spun off for other communities (OBYC, Seacrest, etc.) in the future. Formerly published as "BLT Community" — internal file names, prefixes, and the GitHub repository keep the original `blt-community` naming for update continuity.
 
 ---
 
@@ -53,7 +53,7 @@ BLT Community is a WordPress plugin where the unit of membership is a **property
 
 ### Required Plugins
 
-The following plugins must be installed and activated before BLT Community will function fully. Each requires specific manual configuration after the plugin is activated — see the sections below.
+The following plugins must be installed and activated before WPICA Community will function fully. Each requires specific manual configuration after the plugin is activated — see the sections below.
 
 | Plugin | Why it's needed | Where to get it |
 |---|---|---|

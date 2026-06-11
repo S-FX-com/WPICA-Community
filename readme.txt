@@ -1,4 +1,4 @@
-=== Blt Community ===
+=== WPICA Community ===
 Contributors:      blt
 Tags:              membership, community, civic association, dues, HOA
 Requires at least: 6.0
@@ -8,12 +8,12 @@ Requires PHP:      8.0
 License:           GPLv2 or later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
-Home-centric membership management for civic associations and community organizations.
+Home-centric membership management for the West Point Island Civic Association.
 
 == Description ==
 
-Blt Community is a full-featured membership management plugin for civic associations,
-HOAs, and community organizations. Membership is **home-centric** — the unit of
+WPICA Community is a full-featured membership management plugin built for the
+West Point Island Civic Association. Membership is **home-centric** — the unit of
 membership is a property address, not an individual. Multiple users can belong to one
 home address.
 

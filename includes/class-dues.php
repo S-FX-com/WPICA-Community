@@ -74,7 +74,7 @@ class CMM_Dues {
         $reports_url = admin_url( 'admin.php?page=cmm-reports' );
 
         echo '<div class="notice notice-warning is-dismissible">';
-        echo '<p><strong>Blt Community:</strong> Annual dues reset ran on '
+        echo '<p><strong>WPICA Community:</strong> Annual dues reset ran on '
             . esc_html( $notice['date'] ) . '. ';
         echo absint( $notice['count'] ) . ' home(s) set to <strong>Expired</strong>. ';
         echo 'Members must renew to regain access. ';

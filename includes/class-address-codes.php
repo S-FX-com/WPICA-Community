@@ -110,7 +110,7 @@ class CMM_Address_Codes {
         $codes        = implode( ', ', array_keys( $collisions ) );
 
         echo '<div class="notice notice-error"><p>';
-        echo '<strong>Blt Community:</strong> ' . $count . ' address code collision(s) detected: ';
+        echo '<strong>WPICA Community:</strong> ' . $count . ' address code collision(s) detected: ';
         echo '<strong>' . esc_html( $codes ) . '</strong>. ';
         echo '<a href="' . esc_url( $settings_url ) . '">Resolve in Address Code Settings &rarr;</a>';
         echo '</p></div>';

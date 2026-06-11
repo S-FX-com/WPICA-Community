@@ -30,7 +30,7 @@ class CMM_Onboarding {
         $saved = isset( $_GET['saved'] );
         ?>
         <div class="wrap cmm-onboarding">
-            <h1>&#127968; Welcome to Blt Community</h1>
+            <h1>&#127968; Welcome to WPICA Community</h1>
             <p>Complete this one-time setup to configure your community.
                You can fine-tune everything later from <strong>Community &rarr; Settings</strong>.</p>
 
@@ -149,7 +149,7 @@ class CMM_Onboarding {
         if ( get_option( 'cmm_onboarding_complete' ) ) return;
         $setup_url = admin_url( 'admin.php?page=community-membership' );
         echo '<div class="notice notice-info"><p>';
-        echo '<strong>Blt Community:</strong> Complete the one-time setup to get started. ';
+        echo '<strong>WPICA Community:</strong> Complete the one-time setup to get started. ';
         echo '<a href="' . esc_url( $setup_url ) . '">Run Setup &rarr;</a>';
         echo '</p></div>';
     }
