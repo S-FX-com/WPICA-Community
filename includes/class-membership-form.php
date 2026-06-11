@@ -61,13 +61,65 @@ class CMM_Membership_Form {
 
         $message = self::substitute_placeholders( $message, $home_id );
 
+        $payment_mode = (string) get_option( 'cmm_payment_mode', 'confirmation' );
+        $redirect_url = '';
+        if ( $payment_mode === 'paypal_redirect' ) {
+            $redirect_url = self::build_payment_redirect_url( $home_id );
+        }
+
         ob_start();
         ?>
         <div class="cmm-mf-confirmation">
             <?php echo self::kses_confirmation( $message ); ?>
+            <?php if ( $redirect_url !== '' ): ?>
+            <div class="cmm-mf-redirect-banner" role="status" aria-live="assertive">
+                REDIRECTING FOR PAYMENT
+            </div>
+            <p class="cmm-mf-redirect-fallback">
+                If you are not redirected automatically,
+                <a href="<?php echo esc_url( $redirect_url ); ?>">click here to complete your payment</a>.
+            </p>
+            <script>
+            setTimeout( function () {
+                window.location.href = <?php echo wp_json_encode( $redirect_url ); ?>;
+            }, <?php echo (int) get_option( 'cmm_paypal_redirect_delay', 5 ) * 1000; ?> );
+            </script>
+            <?php endif; ?>
         </div>
         <?php
         return ob_get_clean();
+    }
+
+    /**
+     * Build the PayPal redirect target for paypal_redirect payment mode.
+     * Substitutes {amount}, {email}, {first_name}, {last_name}, {address},
+     * and {home_id} placeholders with URL-encoded values.
+     */
+    private static function build_payment_redirect_url( int $home_id ): string {
+        $url = trim( (string) get_option( 'cmm_paypal_redirect_url', '' ) );
+        if ( $url === '' ) {
+            return '';
+        }
+
+        $home    = get_post( $home_id );
+        $primary = (int) get_field( 'primary_contact', $home_id );
+        $user    = $primary ? get_userdata( $primary ) : null;
+        $amount  = (float) get_field( 'dues_amount_paid', $home_id );
+
+        $replacements = [
+            '{amount}'     => number_format( $amount, 2, '.', '' ),
+            '{email}'      => $user ? $user->user_email : '',
+            '{first_name}' => $user ? $user->first_name : '',
+            '{last_name}'  => $user ? $user->last_name  : '',
+            '{address}'    => $home ? $home->post_title : '',
+            '{home_id}'    => (string) $home_id,
+        ];
+
+        return str_replace(
+            array_keys( $replacements ),
+            array_map( 'rawurlencode', array_values( $replacements ) ),
+            $url
+        );
     }
 
     // -------------------------------------------------------------------------

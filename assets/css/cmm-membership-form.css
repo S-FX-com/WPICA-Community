@@ -708,6 +708,29 @@
     text-align: left !important;
 }
 
+/* PayPal redirect mode — flashing notice shown before the redirect fires */
+.cmm-mf-redirect-banner {
+    margin: 28px 0 8px !important;
+    padding: 16px 20px !important;
+    border-radius: var(--cmm-mf-radius-input, 10px) !important;
+    background: var(--cmm-mf-accent, #2271b1) !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    font-size: 18px !important;
+    letter-spacing: 1.5px !important;
+    text-align: center !important;
+    animation: cmm-mf-redirect-pulse 1.2s ease-in-out infinite !important;
+}
+@keyframes cmm-mf-redirect-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+}
+.cmm-mf-redirect-fallback {
+    text-align: center !important;
+    color: var(--cmm-mf-muted, #646970) !important;
+    font-size: 14px !important;
+}
+
 /* =============================================================================
  * Narrow screens
  * ========================================================================== */
