@@ -364,7 +364,9 @@ class CMM_Settings {
     }
 
     public static function render_membership_form_fields(): void {
-        $payment_mode = get_option( 'cmm_payment_mode', 'confirmation' );
+        $payment_mode   = get_option( 'cmm_payment_mode', 'confirmation' );
+        $redirect_url   = get_option( 'cmm_paypal_redirect_url', '' );
+        $redirect_delay = (int) get_option( 'cmm_paypal_redirect_delay', 5 );
         $default_confirmation = "<h2>Thank you, {first_name}!</h2>\n"
             . "<p>Your membership at <strong>{address}</strong> is now active.</p>\n"
             . "<p>To complete your dues payment of <strong>\${amount}</strong>, please use the PayPal button below:</p>\n"
@@ -399,6 +401,13 @@ class CMM_Settings {
                         <strong>Confirmation Message</strong> — show a custom message after
                         submit (paste your PayPal button HTML below).
                     </label>
+                    <label style="display:block;margin-bottom:6px;">
+                        <input type="radio" name="cmm_payment_mode" value="paypal_redirect"
+                               <?php checked( $payment_mode, 'paypal_redirect' ); ?>>
+                        <strong>PayPal Redirect</strong> — show the confirmation message,
+                        flash a <em>REDIRECTING FOR PAYMENT</em> banner, then send the
+                        member to your PayPal payment page automatically.
+                    </label>
                     <label style="display:block;color:#646970;">
                         <input type="radio" name="cmm_payment_mode" value="stripe" disabled>
                         <strong>Stripe Checkout</strong>
@@ -408,6 +417,48 @@ class CMM_Settings {
                     </label>
                 </td>
             </tr>
+            <tr class="cmm-paypal-redirect-field">
+                <th scope="row"><label for="cmm_paypal_redirect_url">PayPal Redirect URL</label></th>
+                <td>
+                    <input type="url" id="cmm_paypal_redirect_url" name="cmm_paypal_redirect_url"
+                           value="<?php echo esc_attr( $redirect_url ); ?>"
+                           class="large-text"
+                           placeholder="https://www.paypal.com/paypalme/yourcommunity/{amount}">
+                    <p class="description">
+                        Where the member is sent after the confirmation message. Supports the
+                        placeholders <code>{amount}</code>, <code>{email}</code>,
+                        <code>{first_name}</code>, <code>{last_name}</code>,
+                        <code>{address}</code>, and <code>{home_id}</code>
+                        (values are URL-encoded automatically).
+                    </p>
+                </td>
+            </tr>
+            <tr class="cmm-paypal-redirect-field">
+                <th scope="row"><label for="cmm_paypal_redirect_delay">Redirect Delay</label></th>
+                <td>
+                    <input type="number" id="cmm_paypal_redirect_delay" name="cmm_paypal_redirect_delay"
+                           value="<?php echo esc_attr( $redirect_delay ); ?>"
+                           min="1" max="60" step="1" style="width:90px;"> seconds
+                    <p class="description">
+                        How long the confirmation message and the
+                        <em>REDIRECTING FOR PAYMENT</em> banner stay on screen before the
+                        redirect fires.
+                    </p>
+                </td>
+            </tr>
+            <script>
+            ( function () {
+                var radios = document.querySelectorAll( 'input[name="cmm_payment_mode"]' );
+                var rows   = document.querySelectorAll( '.cmm-paypal-redirect-field' );
+                function toggle() {
+                    var checked = document.querySelector( 'input[name="cmm_payment_mode"]:checked' );
+                    var show    = checked && checked.value === 'paypal_redirect';
+                    rows.forEach( function ( row ) { row.style.display = show ? '' : 'none'; } );
+                }
+                radios.forEach( function ( r ) { r.addEventListener( 'change', toggle ); } );
+                toggle();
+            } )();
+            </script>
             <tr>
                 <th scope="row"><label for="cmm_confirmation_message">Confirmation Message</label></th>
                 <td>
@@ -751,7 +802,20 @@ class CMM_Settings {
 
     private static function save_membership_form(): void {
         $submitted_mode = sanitize_key( $_POST['cmm_payment_mode'] ?? 'confirmation' );
-        update_option( 'cmm_payment_mode', $submitted_mode === 'stripe' ? 'stripe' : 'confirmation' );
+        if ( ! in_array( $submitted_mode, [ 'confirmation', 'paypal_redirect', 'stripe' ], true ) ) {
+            $submitted_mode = 'confirmation';
+        }
+        update_option( 'cmm_payment_mode', $submitted_mode );
+
+        // esc_url_raw() strips literal braces, which would destroy {amount}-style
+        // placeholders — shield them through sanitization and restore after.
+        $redirect_url = (string) wp_unslash( $_POST['cmm_paypal_redirect_url'] ?? '' );
+        $redirect_url = str_replace( [ '{', '}' ], [ '__CMM_OB__', '__CMM_CB__' ], $redirect_url );
+        $redirect_url = esc_url_raw( $redirect_url );
+        $redirect_url = str_replace( [ '__CMM_OB__', '__CMM_CB__' ], [ '{', '}' ], $redirect_url );
+        update_option( 'cmm_paypal_redirect_url', $redirect_url );
+
+        update_option( 'cmm_paypal_redirect_delay', max( 1, min( 60, (int) ( $_POST['cmm_paypal_redirect_delay'] ?? 5 ) ) ) );
 
         // Raw HTML allowed — admin-only field; rendering uses kses_confirmation().
         update_option( 'cmm_confirmation_message', wp_unslash( $_POST['cmm_confirmation_message'] ?? '' ) );
