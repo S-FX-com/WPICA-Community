@@ -1,8 +1,12 @@
-# BLT Community — Claude Code Guide
+# WPICA Community — Claude Code Guide
 
 ## Project overview
 
-WordPress plugin that manages home-centric membership for civic associations.
+WordPress plugin (display name "WPICA Community", formerly "BLT Community") that
+manages home-centric membership for the West Point Island Civic Association.
+Internal naming — the `blt-community.php` entry file, `cmm_`/`CMM_` prefixes,
+text domain, and GitHub repo slug — intentionally keeps the original identifiers
+so updates and stored data stay compatible. Do not rename them.
 Post type `cmm_home` is the central record; users are linked to homes via ACF fields
 (`primary_contact`, `linked_users`) and WP user meta (`cmm_home_id`, `cmm_address_code`).
 

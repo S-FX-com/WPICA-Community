@@ -1,5 +1,5 @@
 /**
- * Blt Community — Address typeahead for the registration form.
+ * WPICA Community — Address typeahead for the registration form.
  * Debounced fetch against /wp-json/cmm/v1/addresses
  */
 document.addEventListener('DOMContentLoaded', function () {

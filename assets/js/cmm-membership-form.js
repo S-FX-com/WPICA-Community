@@ -1,5 +1,5 @@
 /**
- * Blt Community — Native multi-step membership form.
+ * WPICA Community — Native multi-step membership form.
  *
  * Reveals one step at a time, drives the address/account/username live checks
  * against the REST endpoints, and builds the review summary before submit.

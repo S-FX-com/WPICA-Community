@@ -1,5 +1,5 @@
 /**
- * Blt Community — shared frontend JS.
+ * WPICA Community — shared frontend JS.
  * Handles AJAX remove-user from the My Home dashboard.
  */
 (function ($) {

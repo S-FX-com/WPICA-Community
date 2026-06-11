@@ -6,7 +6,7 @@
     "title": "CMM Address Lookup",
     "category": "sureforms",
     "icon": "admin-home",
-    "description": "Predictive address search field. Shows only inactive or expired homes from the Blt Community membership list.",
+    "description": "Predictive address search field. Shows only inactive or expired homes from the WPICA Community membership list.",
     "keywords": [ "address", "community", "membership", "lookup", "typeahead", "cmm", "blt" ],
     "textdomain": "cmm",
     "editorScript": "file:./index.js",

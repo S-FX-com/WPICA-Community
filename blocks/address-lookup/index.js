@@ -58,7 +58,7 @@
                     } ),
                     el( 'div', { className: 'cmm-block-badge' },
                         el( 'span', { className: 'dashicons dashicons-admin-home' } ),
-                        __( ' Blt Community — Address Lookup (live on frontend)', 'cmm' )
+                        __( ' WPICA Community — Address Lookup (live on frontend)', 'cmm' )
                     )
                 ),
             ];
